@@ -1,0 +1,74 @@
+@import 'tailwindcss';
+
+@theme {
+	--font-sans: 'Inter', system-ui, sans-serif;
+	--font-mono: 'JetBrains Mono', 'Cascadia Code', Menlo, monospace;
+
+	/* Terminal palette — dark investor/Bloomberg */
+	--color-bg: #0a0e14;
+	--color-bg-elevated: #0f141c;
+	--color-surface: #131922;
+	--color-surface-hover: #1a2230;
+	--color-border: #1f2937;
+	--color-border-strong: #2d3748;
+
+	--color-text-primary: #e5e7eb;
+	--color-text-secondary: #9ca3af;
+	--color-text-muted: #6b7280;
+
+	--color-accent: #3b82f6;
+	--color-accent-hover: #2563eb;
+	--color-up: #10b981;
+	--color-up-glow: rgba(16, 185, 129, 0.15);
+	--color-down: #ef4444;
+	--color-down-glow: rgba(239, 68, 68, 0.15);
+	--color-warn: #f59e0b;
+	--color-info: #06b6d4;
+}
+
+html, body {
+	font-family: var(--font-sans);
+	background-color: var(--color-bg);
+	color: var(--color-text-primary);
+}
+
+body {
+	background-image:
+		radial-gradient(circle at 0% 0%, rgba(59, 130, 246, 0.05) 0%, transparent 40%),
+		radial-gradient(circle at 100% 100%, rgba(16, 185, 129, 0.04) 0%, transparent 40%);
+	background-attachment: fixed;
+	min-height: 100vh;
+}
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #1f2937; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #2d3748; }
+
+.tabular { font-variant-numeric: tabular-nums; }
+
+.glow-up { box-shadow: 0 0 24px var(--color-up-glow); }
+.glow-down { box-shadow: 0 0 24px var(--color-down-glow); }
+
+@keyframes pulse-dot {
+	0%, 100% { opacity: 1; }
+	50% { opacity: 0.4; }
+}
+.pulse-dot { animation: pulse-dot 2s ease-in-out infinite; }
+
+@keyframes shimmer {
+	0% { background-position: -200% 0; }
+	100% { background-position: 200% 0; }
+}
+.shimmer {
+	background: linear-gradient(90deg, transparent 0%, rgba(59,130,246,0.08) 50%, transparent 100%);
+	background-size: 200% 100%;
+	animation: shimmer 2s linear infinite;
+}
+
+.grid-overlay {
+	background-image:
+		linear-gradient(rgba(31, 41, 55, 0.4) 1px, transparent 1px),
+		linear-gradient(90deg, rgba(31, 41, 55, 0.4) 1px, transparent 1px);
+	background-size: 32px 32px;
+}
