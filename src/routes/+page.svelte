@@ -9,44 +9,43 @@
 	const fmtEur = (n: number) =>
 		new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 2 }).format(n || 0);
 
+	const fmtEurShort = (n: number) => {
+		if (Math.abs(n) >= 1000) return new Intl.NumberFormat('es-ES', { maximumFractionDigits: 1 }).format(n / 1000) + 'k €';
+		return fmtEur(n);
+	};
+
 	const fmtPct = (n: number) =>
 		new Intl.NumberFormat('es-ES', { style: 'percent', maximumFractionDigits: 2 }).format(n || 0);
 
 	const fmtDate = (s: string) => new Date(s).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
 
 	const totalInvested = $derived(p.invested_eur || 0);
-	// Prefer mark-to-market total when available; fall back to cost basis.
-	const totalCapital = $derived((data.marketValue?.total_eur ?? p.cash_eur + totalInvested));
-	const totalCapitalCost = $derived(p.cash_eur + totalInvested);
+	const totalCapital = $derived(data.marketValue?.total_eur ?? p.cash_eur + totalInvested);
 
-	// Sectors from data
 	const sectors = $derived((data.sectors || []).slice().sort((a, b) => b.change_pct - a.change_pct));
-
-	// Movers from market data
 	const indices = $derived((data.market || []).filter((m) => m.category === 'Índices'));
 	const commodities = $derived((data.market || []).filter((m) => m.category === 'Commodities'));
 	const rates = $derived((data.market || []).filter((m) => m.category === 'Tipos' || m.category === 'Divisas'));
 
-	// Risk mood: count indices up vs down
 	const moodIdx = $derived(indices.filter((i) => i.change_pct > 0).length);
 	const moodTotal = $derived(indices.length || 1);
 	const mood = $derived(
-		moodIdx / moodTotal > 0.65 ? { label: 'Risk-On', color: 'up', pct: moodIdx / moodTotal }
-		: moodIdx / moodTotal < 0.35 ? { label: 'Risk-Off', color: 'down', pct: moodIdx / moodTotal }
-		: { label: 'Neutral', color: 'warn', pct: moodIdx / moodTotal }
+		moodIdx / moodTotal > 0.65 ? { label: 'Risk-On', color: 'up' }
+		: moodIdx / moodTotal < 0.35 ? { label: 'Risk-Off', color: 'down' }
+		: { label: 'Neutral', color: 'warn' }
 	);
 </script>
 
-<div class="p-6 space-y-6">
+<div class="p-4 md:p-6 space-y-5 md:space-y-6">
 	<!-- Header -->
-	<header class="flex items-end justify-between">
+	<header class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
 		<div>
 			<div class="text-[11px] uppercase tracking-widest text-[var(--color-text-muted)] font-medium">Dashboard</div>
-			<h1 class="text-3xl font-bold text-[var(--color-text-primary)] mt-1">Cartera · Resumen ejecutivo</h1>
+			<h1 class="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)] mt-1">Cartera · Resumen ejecutivo</h1>
 		</div>
-		<div class="text-right">
-			<div class="text-xs text-[var(--color-text-muted)]">{new Date().toLocaleDateString('es-ES', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}</div>
-			<div class="flex items-center gap-1.5 justify-end mt-1">
+		<div class="sm:text-right">
+			<div class="text-xs text-[var(--color-text-muted)] capitalize">{new Date().toLocaleDateString('es-ES', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}</div>
+			<div class="flex items-center gap-1.5 sm:justify-end mt-1">
 				<span class="w-1.5 h-1.5 rounded-full bg-[var(--color-{mood.color})] pulse-dot"></span>
 				<span class="text-xs font-medium text-[var(--color-{mood.color})]">Sentimiento: {mood.label}</span>
 			</div>
@@ -54,8 +53,8 @@
 	</header>
 
 	<!-- KPI row -->
-	<div class="grid grid-cols-2 md:grid-cols-5 gap-3">
-		<Kpi label="Patrimonio" value={fmtEur(totalCapital)} hint={data.marketValue ? "A precio de mercado" : "Invertido + liquidez"} />
+	<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-3">
+		<Kpi label="Patrimonio" value={fmtEur(totalCapital)} hint={data.marketValue ? 'A precio de mercado' : 'Invertido + liquidez'} />
 		<Kpi label="Invertido" value={fmtEur(totalInvested)} hint="{fmtPct(totalCapital > 0 ? totalInvested / totalCapital : 0)} del capital" />
 		<Kpi label="Liquidez" value={fmtEur(p.cash_eur)} hint="{fmtPct(totalCapital > 0 ? p.cash_eur / totalCapital : 0)} disponible" accent={p.cash_eur / (totalCapital || 1) > 0.4 ? 'warn' : 'default'} />
 		<Kpi label="Rentabilidad" value={fmtPct(totalCapital > 0 ? (totalCapital - 10000) / 10000 : 0)} change={(totalCapital - 10000) / 10000 * 100} accent={totalCapital >= 10000 ? 'up' : 'down'} />
@@ -69,8 +68,8 @@
 
 	<!-- Equity curve -->
 	{#if data.valuations?.length > 0}
-		<div class="border border-[var(--color-border)] rounded-lg bg-[var(--color-surface)] p-4">
-			<div class="flex items-center justify-between mb-3">
+		<div class="border border-[var(--color-border)] rounded-lg bg-[var(--color-surface)] p-3 md:p-4 overflow-x-auto">
+			<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 gap-1">
 				<div>
 					<h2 class="text-sm font-semibold text-[var(--color-text-primary)]">Evolución del patrimonio</h2>
 					<p class="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] mt-0.5">Últimos 6 meses · base 10.000 €</p>
@@ -88,11 +87,11 @@
 		</div>
 	{/if}
 
-	<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+	<div class="grid grid-cols-1 lg:grid-cols-3 gap-5 md:gap-6">
 		<!-- Left: Positions / Status -->
-		<div class="lg:col-span-2 space-y-6">
+		<div class="lg:col-span-2 space-y-5 md:space-y-6">
 			{#if p.position_count === 0}
-				<div class="border border-dashed border-[var(--color-border-strong)] rounded-xl p-10 text-center bg-[var(--color-surface)]">
+				<div class="border border-dashed border-[var(--color-border-strong)] rounded-xl p-8 md:p-10 text-center bg-[var(--color-surface)]">
 					<div class="text-[var(--color-text-secondary)] font-medium">Cartera recién inicializada</div>
 					<p class="text-[var(--color-text-muted)] text-sm mt-2">10.000 € en liquidez · Pendiente de primera compra</p>
 					<div class="mt-4 inline-flex items-center gap-2 text-xs text-[var(--color-warn)] bg-[var(--color-warn)]/10 px-3 py-1.5 rounded-md">
@@ -101,13 +100,15 @@
 					</div>
 				</div>
 			{:else}
-				<!-- Positions table -->
+				<!-- Positions: desktop table, mobile cards -->
 				<div class="border border-[var(--color-border)] rounded-lg overflow-hidden bg-[var(--color-surface)]">
 					<div class="px-4 py-3 border-b border-[var(--color-border)] flex items-center justify-between">
 						<h2 class="text-sm font-semibold text-[var(--color-text-primary)]">Posiciones abiertas</h2>
 						<span class="text-xs text-[var(--color-text-muted)]">{p.position_count} activas</span>
 					</div>
-					<table class="w-full text-sm">
+
+					<!-- Desktop table -->
+					<table class="hidden sm:table w-full text-sm">
 						<thead>
 							<tr class="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] border-b border-[var(--color-border)]">
 								<th class="px-4 py-2 text-left">Empresa</th>
@@ -132,23 +133,46 @@
 							{/each}
 						</tbody>
 					</table>
+
+					<!-- Mobile cards -->
+					<div class="sm:hidden divide-y divide-[var(--color-border)]">
+						{#each p.positions as pos}
+							<div class="p-3">
+								<div class="flex items-start justify-between gap-2">
+									<div class="min-w-0 flex-1">
+										<div class="font-medium text-[var(--color-text-primary)] truncate">{pos.company_name}</div>
+										<div class="text-[10px] text-[var(--color-text-muted)] font-mono truncate">{pos.ticker} · {pos.sector}</div>
+									</div>
+									<div class="text-right shrink-0">
+										<div class="font-medium tabular text-[var(--color-text-primary)]">{fmtEurShort(pos.shares * pos.avg_price_eur)}</div>
+										<div class="text-[10px] tabular text-[var(--color-text-muted)]">{fmtPct(totalCapital > 0 ? (pos.shares * pos.avg_price_eur) / totalCapital : 0)}</div>
+									</div>
+								</div>
+								<div class="mt-2 grid grid-cols-3 gap-2 text-[10px] text-[var(--color-text-muted)]">
+									<div><span class="block uppercase tracking-wider">Acciones</span><span class="tabular text-[var(--color-text-secondary)]">{pos.shares}</span></div>
+									<div><span class="block uppercase tracking-wider">P. medio</span><span class="tabular text-[var(--color-text-secondary)]">{fmtEur(pos.avg_price_eur)}</span></div>
+									<div><span class="block uppercase tracking-wider">Sector</span><span class="text-[var(--color-text-secondary)] truncate">{pos.sector}</span></div>
+								</div>
+							</div>
+						{/each}
+					</div>
 				</div>
 			{/if}
 
 			<!-- Sector heatmap -->
-			<div class="border border-[var(--color-border)] rounded-lg bg-[var(--color-surface)] p-4">
+			<div class="border border-[var(--color-border)] rounded-lg bg-[var(--color-surface)] p-3 md:p-4">
 				<div class="flex items-center justify-between mb-3">
 					<h2 class="text-sm font-semibold text-[var(--color-text-primary)]">Sectores S&P (hoy)</h2>
 					<span class="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">Rotación sectorial</span>
 				</div>
-				<div class="grid grid-cols-4 md:grid-cols-6 gap-1.5">
+				<div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-1.5">
 					{#each sectors as s}
 						<div
-							class="p-2.5 rounded text-center border"
+							class="p-2 md:p-2.5 rounded text-center border"
 							style="background-color: {s.change_pct >= 0 ? `rgba(16, 185, 129, ${Math.min(0.5, 0.15 + Math.abs(s.change_pct) * 8)})` : `rgba(239, 68, 68, ${Math.min(0.5, 0.15 + Math.abs(s.change_pct) * 8)})`}; border-color: {s.change_pct >= 0 ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'}"
 						>
 							<div class="text-[10px] text-white/80 truncate">{s.name}</div>
-							<div class="text-sm font-semibold tabular text-white">{(s.change_pct * 100).toFixed(2)}%</div>
+							<div class="text-xs md:text-sm font-semibold tabular text-white">{(s.change_pct * 100).toFixed(2)}%</div>
 						</div>
 					{/each}
 				</div>
@@ -169,7 +193,9 @@
 			<div class="px-4 py-3 border-b border-[var(--color-border)]">
 				<h2 class="text-sm font-semibold text-[var(--color-text-primary)]">Operaciones recientes</h2>
 			</div>
-			<table class="w-full text-sm">
+
+			<!-- Desktop table -->
+			<table class="hidden sm:table w-full text-sm">
 				<thead>
 					<tr class="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] border-b border-[var(--color-border)]">
 						<th class="px-4 py-2 text-left">Fecha</th>
@@ -197,6 +223,24 @@
 					{/each}
 				</tbody>
 			</table>
+
+			<!-- Mobile cards -->
+			<div class="sm:hidden divide-y divide-[var(--color-border)]">
+				{#each p.trades.slice(0, 8) as t}
+					<div class="p-3 flex items-center gap-3">
+						<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0 {t.side === 'buy' ? 'bg-[var(--color-up)]/20 text-[var(--color-up)]' : 'bg-[var(--color-down)]/20 text-[var(--color-down)]'}">
+							{t.side === 'buy' ? 'BUY' : 'SELL'}
+						</span>
+						<div class="min-w-0 flex-1">
+							<div class="font-mono text-sm text-[var(--color-text-primary)]">{t.ticker}</div>
+							<div class="text-[10px] text-[var(--color-text-muted)]">{fmtDate(t.executed_at)} · {t.shares} acc. × {fmtEur(t.price_eur)}</div>
+						</div>
+						<div class="text-right shrink-0">
+							<div class="font-medium tabular text-[var(--color-text-primary)] text-sm">{fmtEurShort(t.shares * t.price_eur)}</div>
+						</div>
+					</div>
+				{/each}
+			</div>
 		</div>
 	{/if}
 </div>

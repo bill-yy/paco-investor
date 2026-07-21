@@ -3,10 +3,10 @@
 	const watchlist = $derived(data.watchlist || []);
 </script>
 
-<div class="p-6 space-y-6">
+<div class="p-4 md:p-6 space-y-5 md:space-y-6">
 	<header>
 		<div class="text-[11px] uppercase tracking-widest text-[var(--color-text-muted)] font-medium">Vigilancia</div>
-		<h1 class="text-3xl font-bold text-[var(--color-text-primary)] mt-1">Watchlist</h1>
+		<h1 class="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)] mt-1">Watchlist</h1>
 		<p class="text-[var(--color-text-muted)] text-sm mt-1">Candidatas en espera de margen de seguridad suficiente.</p>
 	</header>
 
@@ -15,7 +15,7 @@
 			<p class="text-[var(--color-text-muted)]">Watchlist vacía. Añade candidatas desde Research.</p>
 		</div>
 	{:else}
-		<div class="border border-[var(--color-border)] rounded-lg bg-[var(--color-surface)] overflow-hidden">
+		<div class="border border-[var(--color-border)] rounded-lg bg-[var(--color-surface)] overflow-hidden overflow-x-auto">
 			<table class="w-full text-sm">
 				<thead>
 					<tr class="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] border-b border-[var(--color-border)]">

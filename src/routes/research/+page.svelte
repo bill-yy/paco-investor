@@ -50,10 +50,10 @@
 	const suggestions = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'NVDA', 'JPM', 'V', 'JNJ', 'BRK-B', 'SAN.MC', 'ITX.MC', 'BBVA.MC', 'NESN.SW', 'OR.PA', 'SAP.DE', 'ASML.AS', 'MC.PA', '7203.T', '7267.T'];
 </script>
 
-<div class="p-6 space-y-6">
+<div class="p-4 md:p-6 space-y-5 md:space-y-6">
 	<header>
 		<div class="text-[11px] uppercase tracking-widest text-[var(--color-text-muted)] font-medium">Análisis</div>
-		<h1 class="text-3xl font-bold text-[var(--color-text-primary)] mt-1">Research</h1>
+		<h1 class="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)] mt-1">Research</h1>
 		<p class="text-[var(--color-text-muted)] text-sm mt-1">Consulta de empresas y fundamentales vía Yahoo Finance.</p>
 	</header>
 
@@ -94,7 +94,7 @@
 				<div class="flex items-center justify-between flex-wrap gap-3">
 					<div>
 						<div class="text-[11px] font-mono text-[var(--color-text-muted)]">{result.ticker} · {result.exchange}</div>
-						<div class="text-3xl font-bold tabular text-[var(--color-text-primary)] mt-1">
+						<div class="text-2xl md:text-3xl font-bold tabular text-[var(--color-text-primary)] mt-1">
 							{fmt(result.price, ' ' + result.currency)}
 							<span class="text-base text-[var(--color-text-muted)] ml-2">≈ {fmt(result.price_eur, ' €')}</span>
 						</div>

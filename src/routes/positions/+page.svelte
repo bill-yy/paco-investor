@@ -50,28 +50,28 @@
 	const hasThesis = $derived(p.positions.some((pos) => pos.thesis || pos.bear_case || pos.catalysts || pos.risks));
 </script>
 
-<div class="p-6 space-y-6">
+<div class="p-4 md:p-6 space-y-5 md:space-y-6">
 	<header>
 		<div class="text-[11px] uppercase tracking-widest text-[var(--color-text-muted)] font-medium">Cartera</div>
-		<h1 class="text-3xl font-bold text-[var(--color-text-primary)] mt-1">Posiciones</h1>
+		<h1 class="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)] mt-1">Posiciones</h1>
 		<p class="text-[var(--color-text-muted)] text-sm mt-1">{data.marketValue ? 'Valoración a precio de mercado en vivo' : 'Valoración a coste (Yahoo no disponible)'}</p>
 	</header>
 
 	{#if p.position_count === 0}
-		<div class="border border-dashed border-[var(--color-border-strong)] rounded-xl p-12 text-center">
+		<div class="border border-dashed border-[var(--color-border-strong)] rounded-xl p-8 md:p-12 text-center">
 			<p class="text-[var(--color-text-muted)]">Sin posiciones abiertas todavía.</p>
 		</div>
 	{:else}
 		<div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
 			<!-- Sector breakdown -->
-			<div class="border border-[var(--color-border)] rounded-lg bg-[var(--color-surface)] p-4">
+			<div class="border border-[var(--color-border)] rounded-lg bg-[var(--color-surface)] p-3 md:p-4">
 				<h2 class="text-sm font-semibold mb-3 text-[var(--color-text-primary)]">Por sector</h2>
 				<div class="space-y-2">
 					{#each bySector as s}
 						<div>
 							<div class="flex justify-between text-xs mb-1">
-								<span class="text-[var(--color-text-secondary)]">{s.sector}</span>
-								<span class="tabular text-[var(--color-text-muted)]">{fmtPct(totalCapital > 0 ? s.value / totalCapital : 0)}</span>
+								<span class="text-[var(--color-text-secondary)] truncate pr-2">{s.sector}</span>
+								<span class="tabular text-[var(--color-text-muted)] shrink-0">{fmtPct(totalCapital > 0 ? s.value / totalCapital : 0)}</span>
 							</div>
 							<div class="h-1.5 bg-[var(--color-bg-elevated)] rounded overflow-hidden">
 								<div class="h-full bg-gradient-to-r from-[var(--color-accent)] to-[var(--color-up)]" style="width: {Math.min(100, (totalCapital > 0 ? s.value / totalCapital : 0) * 100)}%"></div>
@@ -81,69 +81,115 @@
 				</div>
 			</div>
 
-			<!-- Positions -->
-			<div class="lg:col-span-2 border border-[var(--color-border)] rounded-lg bg-[var(--color-surface)] overflow-hidden overflow-x-auto">
-				<table class="w-full text-sm">
-					<thead>
-						<tr class="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] border-b border-[var(--color-border)]">
-							<th class="px-4 py-2 text-left">Empresa</th>
-							<th class="px-4 py-2 text-right">Acciones</th>
-							<th class="px-4 py-2 text-right">P. medio</th>
-							<th class="px-4 py-2 text-right">P. actual</th>
-							<th class="px-4 py-2 text-right">P&amp;L</th>
-							<th class="px-4 py-2 text-right">Valor</th>
-							<th class="px-4 py-2 text-right">Peso</th>
-						</tr>
-					</thead>
-					<tbody class="divide-y divide-[var(--color-border)]">
-						{#each p.positions as pos}
-							{@const pnl = unrealizedPnl(pos)}
-							{@const live = liveMap.get(pos.ticker)}
-							<tr class="hover:bg-[var(--color-surface-hover)]">
-								<td class="px-4 py-3">
-									<div class="font-medium text-[var(--color-text-primary)]">{pos.company_name}</div>
-									<div class="text-[10px] font-mono text-[var(--color-text-muted)]">{pos.ticker} · {pos.market}</div>
-								</td>
-								<td class="px-4 py-3 text-right tabular text-[var(--color-text-secondary)]">{pos.shares}</td>
-								<td class="px-4 py-3 text-right tabular text-[var(--color-text-secondary)]">{fmtEur(pos.avg_price_eur)}</td>
-								<td class="px-4 py-3 text-right tabular text-[var(--color-text-secondary)]">
-									{live ? fmtEur(live.current_price_eur) : '—'}
-								</td>
-								<td class="px-4 py-3 text-right tabular">
-									{#if pnl}
-										<div class="{pnl.pct >= 0 ? 'text-[var(--color-up)]' : 'text-[var(--color-down)]'}">
-											{fmtPct(pnl.pct)}
-											<div class="text-[10px] text-[var(--color-text-muted)]">{pnl.eur >= 0 ? '+' : ''}{fmtEur(pnl.eur)}</div>
-										</div>
-									{:else}
-										<span class="text-[var(--color-text-muted)]">—</span>
-									{/if}
-								</td>
-								<td class="px-4 py-3 text-right tabular font-medium text-[var(--color-text-primary)]">
-									{fmtEur(live?.market_value_eur ?? pos.shares * pos.avg_price_eur)}
-								</td>
-								<td class="px-4 py-3 text-right tabular text-[var(--color-text-secondary)]">{fmtPct(totalCapital > 0 ? (live?.market_value_eur ?? pos.shares * pos.avg_price_eur) / totalCapital : 0)}</td>
+			<!-- Positions: desktop table + mobile cards -->
+			<div class="lg:col-span-2 border border-[var(--color-border)] rounded-lg bg-[var(--color-surface)] overflow-hidden">
+				<!-- Desktop table -->
+				<div class="hidden md:block overflow-x-auto">
+					<table class="w-full text-sm">
+						<thead>
+							<tr class="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] border-b border-[var(--color-border)]">
+								<th class="px-4 py-2 text-left">Empresa</th>
+								<th class="px-4 py-2 text-right">Acciones</th>
+								<th class="px-4 py-2 text-right">P. medio</th>
+								<th class="px-4 py-2 text-right">P. actual</th>
+								<th class="px-4 py-2 text-right">P&amp;L</th>
+								<th class="px-4 py-2 text-right">Valor</th>
+								<th class="px-4 py-2 text-right">Peso</th>
 							</tr>
-						{/each}
-					</tbody>
-				</table>
+						</thead>
+						<tbody class="divide-y divide-[var(--color-border)]">
+							{#each p.positions as pos}
+								{@const pnl = unrealizedPnl(pos)}
+								{@const live = liveMap.get(pos.ticker)}
+								<tr class="hover:bg-[var(--color-surface-hover)]">
+									<td class="px-4 py-3">
+										<div class="font-medium text-[var(--color-text-primary)]">{pos.company_name}</div>
+										<div class="text-[10px] font-mono text-[var(--color-text-muted)]">{pos.ticker} · {pos.market}</div>
+									</td>
+									<td class="px-4 py-3 text-right tabular text-[var(--color-text-secondary)]">{pos.shares}</td>
+									<td class="px-4 py-3 text-right tabular text-[var(--color-text-secondary)]">{fmtEur(pos.avg_price_eur)}</td>
+									<td class="px-4 py-3 text-right tabular text-[var(--color-text-secondary)]">
+										{live ? fmtEur(live.current_price_eur) : '—'}
+									</td>
+									<td class="px-4 py-3 text-right tabular">
+										{#if pnl}
+											<div class="{pnl.pct >= 0 ? 'text-[var(--color-up)]' : 'text-[var(--color-down)]'}">
+												{fmtPct(pnl.pct)}
+												<div class="text-[10px] text-[var(--color-text-muted)]">{pnl.eur >= 0 ? '+' : ''}{fmtEur(pnl.eur)}</div>
+											</div>
+										{:else}
+											<span class="text-[var(--color-text-muted)]">—</span>
+										{/if}
+									</td>
+									<td class="px-4 py-3 text-right tabular font-medium text-[var(--color-text-primary)]">
+										{fmtEur(live?.market_value_eur ?? pos.shares * pos.avg_price_eur)}
+									</td>
+									<td class="px-4 py-3 text-right tabular text-[var(--color-text-secondary)]">{fmtPct(totalCapital > 0 ? (live?.market_value_eur ?? pos.shares * pos.avg_price_eur) / totalCapital : 0)}</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+
+				<!-- Mobile cards -->
+				<div class="md:hidden divide-y divide-[var(--color-border)]">
+					{#each p.positions as pos}
+						{@const pnl = unrealizedPnl(pos)}
+						{@const live = liveMap.get(pos.ticker)}
+						{@const val = live?.market_value_eur ?? pos.shares * pos.avg_price_eur}
+						<div class="p-3">
+							<div class="flex items-start justify-between gap-2">
+								<div class="min-w-0 flex-1">
+									<div class="font-medium text-[var(--color-text-primary)] truncate">{pos.company_name}</div>
+									<div class="text-[10px] font-mono text-[var(--color-text-muted)]">{pos.ticker} · {pos.market}</div>
+								</div>
+								<div class="text-right shrink-0">
+									<div class="font-medium tabular text-[var(--color-text-primary)]">{fmtEur(val)}</div>
+									<div class="text-[10px] tabular text-[var(--color-text-muted)]">{fmtPct(totalCapital > 0 ? val / totalCapital : 0)} peso</div>
+								</div>
+							</div>
+							<div class="mt-2 grid grid-cols-3 gap-2 text-[10px]">
+								<div>
+									<span class="block uppercase tracking-wider text-[var(--color-text-muted)]">Acciones</span>
+									<span class="tabular text-[var(--color-text-secondary)]">{pos.shares}</span>
+								</div>
+								<div>
+									<span class="block uppercase tracking-wider text-[var(--color-text-muted)]">P. medio</span>
+									<span class="tabular text-[var(--color-text-secondary)]">{fmtEur(pos.avg_price_eur)}</span>
+								</div>
+								<div>
+									<span class="block uppercase tracking-wider text-[var(--color-text-muted)]">P. actual</span>
+									<span class="tabular text-[var(--color-text-secondary)]">{live ? fmtEur(live.current_price_eur) : '—'}</span>
+								</div>
+							</div>
+							{#if pnl}
+								<div class="mt-2 text-xs flex items-center justify-between">
+									<span class="text-[var(--color-text-muted)]">P&amp;L no realizado</span>
+									<span class="tabular {pnl.pct >= 0 ? 'text-[var(--color-up)]' : 'text-[var(--color-down)]'} font-medium">
+										{pnl.eur >= 0 ? '+' : ''}{fmtEur(pnl.eur)} ({fmtPct(pnl.pct)})
+									</span>
+								</div>
+							{/if}
+						</div>
+					{/each}
+				</div>
 			</div>
 		</div>
 
-		<!-- Thesis cards (enriched: catalysts, risks, fair value, live upside) -->
+		<!-- Thesis cards -->
 		{#if hasThesis}
-			<div class="border border-[var(--color-border)] rounded-lg bg-[var(--color-surface)] p-4">
+			<div class="border border-[var(--color-border)] rounded-lg bg-[var(--color-surface)] p-3 md:p-4">
 				<h2 class="text-sm font-semibold mb-3 text-[var(--color-text-primary)]">Tesis, argumentos y valoración</h2>
 				<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
 					{#each p.positions.filter((pos) => pos.thesis || pos.bear_case || pos.catalysts || pos.risks || pos.fair_value_eur) as pos}
 						{@const upside = liveUpside(pos)}
 						<div class="border border-[var(--color-border)] rounded p-3 space-y-2">
-							<div class="flex items-center justify-between">
-								<div>
+							<div class="flex items-center justify-between gap-2">
+								<div class="min-w-0">
 									<span class="font-mono text-xs text-[var(--color-accent)]">{pos.ticker}</span>
-									<span class="text-xs text-[var(--color-text-muted)] ml-2">{pos.company_name}</span>
+									<span class="text-xs text-[var(--color-text-muted)] ml-2 truncate">{pos.company_name}</span>
 								</div>
-								<div class="flex gap-2">
+								<div class="flex gap-2 shrink-0">
 									{#if pos.score}
 										<span class="text-[10px] tabular {scoreColor(pos.score)}" title="Score del agente">{pos.score}/100</span>
 									{/if}

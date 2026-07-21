@@ -116,7 +116,7 @@
 		<p class="text-[var(--color-text-muted)] text-xs mt-1">La curva aparecerá cuando el agente ejecute operaciones o se invoque <code class="text-[var(--color-accent)]">/api/snapshot</code>.</p>
 	</div>
 {:else}
-	<div class="relative" style="height: 280px;">
+	<div class="relative h-56 md:h-72">
 		<canvas bind:this={canvas}></canvas>
 	</div>
 {/if}

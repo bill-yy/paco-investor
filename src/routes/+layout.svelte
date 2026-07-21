@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 
 	let { children } = $props();
+	let mobileNavOpen = $state(false);
 
 	const nav = [
 		{ href: '/', label: 'Dashboard', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
@@ -15,11 +16,47 @@
 	];
 
 	const now = new Date().toLocaleString('es-ES', { hour: '2-digit', minute: '2-digit' });
+
+	function closeNav() {
+		mobileNavOpen = false;
+	}
 </script>
 
+<!-- Mobile top bar -->
+<div class="md:hidden sticky top-0 z-30 flex items-center justify-between px-4 py-3 bg-[var(--color-bg-elevated)] border-b border-[var(--color-border)]">
+	<a href="/" class="flex items-center gap-2" onclick={closeNav}>
+		<div class="w-7 h-7 rounded-md bg-gradient-to-br from-[var(--color-accent)] to-[var(--color-up)] flex items-center justify-center">
+			<span class="text-white font-bold text-xs">P</span>
+		</div>
+		<span class="text-sm font-semibold text-[var(--color-text-primary)]">PacoInvestor</span>
+	</a>
+	<button
+		onclick={() => (mobileNavOpen = !mobileNavOpen)}
+		class="p-2 -mr-2 rounded-md text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
+		aria-label="Toggle navigation"
+	>
+		{#if mobileNavOpen}
+			<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+		{:else}
+			<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" /></svg>
+		{/if}
+	</button>
+</div>
+
 <div class="flex min-h-screen">
+	<!-- Mobile drawer backdrop -->
+	{#if mobileNavOpen}
+		<button
+			class="md:hidden fixed inset-0 z-30 bg-black/60 backdrop-blur-sm"
+			onclick={closeNav}
+			aria-label="Close navigation"
+		></button>
+	{/if}
+
 	<!-- Sidebar -->
-	<aside class="w-56 border-r border-[var(--color-border)] bg-[var(--color-bg-elevated)] flex flex-col">
+	<aside
+		class="fixed md:sticky md:top-0 z-40 md:z-0 w-64 md:w-56 h-screen md:h-screen shrink-0 border-r border-[var(--color-border)] bg-[var(--color-bg-elevated)] flex flex-col transition-transform duration-200 -translate-x-full md:translate-x-0 {mobileNavOpen ? 'translate-x-0' : ''}"
+	>
 		<div class="p-5 border-b border-[var(--color-border)]">
 			<div class="flex items-center gap-2.5">
 				<div class="w-8 h-8 rounded-md bg-gradient-to-br from-[var(--color-accent)] to-[var(--color-up)] flex items-center justify-center">
@@ -32,10 +69,11 @@
 			</div>
 		</div>
 
-		<nav class="flex-1 p-3 space-y-0.5">
+		<nav class="flex-1 p-3 space-y-0.5 overflow-y-auto">
 			{#each nav as item}
 				<a
 					href={item.href}
+					onclick={closeNav}
 					class="flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors {page.url.pathname === item.href
 						? 'bg-[var(--color-surface-hover)] text-[var(--color-accent)] border-l-2 border-[var(--color-accent)]'
 						: 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]'}"
@@ -56,7 +94,7 @@
 	</aside>
 
 	<!-- Main -->
-	<main class="flex-1 overflow-x-hidden">
+	<main class="flex-1 min-w-0 overflow-x-hidden">
 		{@render children()}
 	</main>
 </div>

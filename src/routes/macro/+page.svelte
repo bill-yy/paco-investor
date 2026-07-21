@@ -48,10 +48,10 @@
 		: 'text-[var(--color-text-muted)]';
 </script>
 
-<div class="p-6 space-y-6">
+<div class="p-4 md:p-6 space-y-5 md:space-y-6">
 	<header>
 		<div class="text-[11px] uppercase tracking-widest text-[var(--color-text-muted)] font-medium">Contexto</div>
-		<h1 class="text-3xl font-bold text-[var(--color-text-primary)] mt-1">Cuadro macroeconómico</h1>
+		<h1 class="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)] mt-1">Cuadro macroeconómico</h1>
 		<p class="text-[var(--color-text-muted)] text-sm mt-1">Datos en vivo para ajustar el riesgo de la cartera. No para predecir movimientos diarios.</p>
 	</header>
 
