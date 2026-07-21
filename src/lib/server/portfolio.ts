@@ -1,7 +1,8 @@
 // Portfolio operations: open, close, buy, sell
 import { getDb } from './db';
 import { getQuote, getFxRate } from './yahoo';
-import type { Trade } from './db';
+import { saveValuation } from './valuation';
+import type { Position, Trade } from './db';
 
 export interface TradeInput {
 	executed_at?: string;
@@ -54,7 +55,7 @@ export async function executeTrade(input: TradeInput): Promise<TradeResult> {
 		// Upsert position
 		const existing = db
 			.prepare('SELECT * FROM positions WHERE ticker = ?')
-			.get(ticker) as any;
+			.get(ticker) as Position | undefined;
 
 		if (input.side === 'buy') {
 				if (existing) {
@@ -120,12 +121,13 @@ export async function executeTrade(input: TradeInput): Promise<TradeResult> {
 			).run(Math.max(0, newShares), newShares, ticker);
 		}
 
-		// Record trade
+		// Record trade (with full decision context)
 		const info = db
 			.prepare(
 				`INSERT INTO trades
-				 (executed_at, ticker, isin, company_name, side, shares, price_local, price_eur, fx_rate, fee_eur, thesis)
-				 VALUES (?,?,?,?,?,?,?,?,?,?,?)`
+				 (executed_at, ticker, isin, company_name, side, shares, price_local, price_eur, fx_rate, fee_eur,
+				  thesis, catalysts, risks, fair_value_eur, score, bear_case)
+				 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
 			)
 			.run(
 				executed_at,
@@ -138,7 +140,12 @@ export async function executeTrade(input: TradeInput): Promise<TradeResult> {
 				price_eur,
 				fx_rate,
 				fee_eur,
-				input.thesis ?? null
+				input.thesis ?? null,
+				input.catalysts ?? null,
+				input.risks ?? null,
+				input.fair_value_eur ?? null,
+				input.score ?? null,
+				input.bear_case ?? null
 			);
 		const trade = db.prepare('SELECT * FROM trades WHERE id = ?').get(info.lastInsertRowid) as Trade;
 		return { existing, trade };
@@ -146,7 +153,15 @@ export async function executeTrade(input: TradeInput): Promise<TradeResult> {
 
 	const { trade } = tx();
 
-	const finalPos = db.prepare('SELECT * FROM positions WHERE ticker = ?').get(ticker) as any;
+	const finalPos = db.prepare('SELECT * FROM positions WHERE ticker = ?').get(ticker) as Position;
+
+	// Trade-triggered valuation snapshot. Wrapped so a Yahoo failure during
+	// snapshot never aborts the committed trade.
+	try {
+		await saveValuation();
+	} catch (e) {
+		console.error('[snapshot] post-trade valuation failed:', e);
+	}
 
 	return {
 		trade,
@@ -163,7 +178,7 @@ export async function getPortfolioSnapshot() {
 	const db = getDb();
 	const positions = db
 		.prepare(`SELECT * FROM positions WHERE status = 'open' ORDER BY (shares * avg_price_eur) DESC`)
-		.all() as any[];
+		.all() as Position[];
 
 	const trades = db.prepare('SELECT * FROM trades ORDER BY executed_at DESC').all() as Trade[];
 

@@ -161,11 +161,29 @@ function migrate(db: Database.Database) {
 			UNIQUE(created_at, sector)
 		);
 	`);
+
+	// Lightweight column migrations: add columns if missing (safe on existing DBs).
+	// valuations.positions_market_eur: market value of positions (vs invested cost)
+	addColumnIfMissing(db, 'valuations', 'positions_market_eur', 'REAL');
+	// trades: extend journal with full decision context (was only storing thesis)
+	addColumnIfMissing(db, 'trades', 'catalysts', 'TEXT');
+	addColumnIfMissing(db, 'trades', 'risks', 'TEXT');
+	addColumnIfMissing(db, 'trades', 'fair_value_eur', 'REAL');
+	addColumnIfMissing(db, 'trades', 'score', 'INTEGER');
+	addColumnIfMissing(db, 'trades', 'bear_case', 'TEXT');
+}
+
+function addColumnIfMissing(db: Database.Database, table: string, column: string, type: string) {
+	const cols = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+	if (!cols.some((c) => c.name === column)) {
+		db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type};`);
+	}
 }
 
 export type Position = {
 	id: number;
 	ticker: string;
+	isin: string | null;
 	company_name: string;
 	market: string;
 	sector: string;
@@ -188,6 +206,8 @@ export type Trade = {
 	id: number;
 	executed_at: string;
 	ticker: string;
+	isin: string | null;
+	company_name: string;
 	side: 'buy' | 'sell';
 	shares: number;
 	price_local: number;
@@ -195,6 +215,11 @@ export type Trade = {
 	fx_rate: number;
 	fee_eur: number;
 	thesis: string | null;
+	catalysts: string | null;
+	risks: string | null;
+	fair_value_eur: number | null;
+	score: number | null;
+	bear_case: string | null;
 	created_at: number;
 };
 
@@ -203,8 +228,20 @@ export type Valuation = {
 	timestamp: string;
 	cash_eur: number;
 	positions_eur: number;
+	positions_market_eur: number | null;
 	total_eur: number;
 	invested_eur: number;
 	benchmark_value: number | null;
 	benchmark_eur: number | null;
+};
+
+export type Watchlist = {
+	id: number;
+	ticker: string;
+	company_name: string;
+	added_at: string;
+	notes: string | null;
+	target_entry_eur: number | null;
+	fair_value_eur: number | null;
+	score: number | null;
 };

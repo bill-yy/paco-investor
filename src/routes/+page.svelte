@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Kpi from '$lib/components/Kpi.svelte';
 	import MarketTicker from '$lib/components/MarketTicker.svelte';
+	import EquityCurve from '$lib/components/EquityCurve.svelte';
 
 	let { data } = $props();
 	const p = $derived(data.portfolio);
@@ -14,7 +15,9 @@
 	const fmtDate = (s: string) => new Date(s).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
 
 	const totalInvested = $derived(p.invested_eur || 0);
-	const totalCapital = $derived(p.cash_eur + totalInvested);
+	// Prefer mark-to-market total when available; fall back to cost basis.
+	const totalCapital = $derived((data.marketValue?.total_eur ?? p.cash_eur + totalInvested));
+	const totalCapitalCost = $derived(p.cash_eur + totalInvested);
 
 	// Sectors from data
 	const sectors = $derived((data.sectors || []).slice().sort((a, b) => b.change_pct - a.change_pct));
@@ -52,12 +55,38 @@
 
 	<!-- KPI row -->
 	<div class="grid grid-cols-2 md:grid-cols-5 gap-3">
-		<Kpi label="Patrimonio" value={fmtEur(totalCapital)} hint="Invertido + liquidez" />
+		<Kpi label="Patrimonio" value={fmtEur(totalCapital)} hint={data.marketValue ? "A precio de mercado" : "Invertido + liquidez"} />
 		<Kpi label="Invertido" value={fmtEur(totalInvested)} hint="{fmtPct(totalCapital > 0 ? totalInvested / totalCapital : 0)} del capital" />
 		<Kpi label="Liquidez" value={fmtEur(p.cash_eur)} hint="{fmtPct(totalCapital > 0 ? p.cash_eur / totalCapital : 0)} disponible" accent={p.cash_eur / (totalCapital || 1) > 0.4 ? 'warn' : 'default'} />
-		<Kpi label="Posiciones" value={String(p.position_count)} hint="Objetivo 12-25" />
 		<Kpi label="Rentabilidad" value={fmtPct(totalCapital > 0 ? (totalCapital - 10000) / 10000 : 0)} change={(totalCapital - 10000) / 10000 * 100} accent={totalCapital >= 10000 ? 'up' : 'down'} />
+		<Kpi
+			label="vs S&P 500"
+			value={data.stats?.alpha_pct != null ? fmtPct(data.stats.alpha_pct) : '—'}
+			hint={data.stats?.max_drawdown_pct != null ? `DD máx ${fmtPct(data.stats.max_drawdown_pct)}` : 'Sin histórico'}
+			accent={data.stats?.alpha_pct == null ? 'default' : data.stats.alpha_pct >= 0 ? 'up' : 'down'}
+		/>
 	</div>
+
+	<!-- Equity curve -->
+	{#if data.valuations?.length > 0}
+		<div class="border border-[var(--color-border)] rounded-lg bg-[var(--color-surface)] p-4">
+			<div class="flex items-center justify-between mb-3">
+				<div>
+					<h2 class="text-sm font-semibold text-[var(--color-text-primary)]">Evolución del patrimonio</h2>
+					<p class="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] mt-0.5">Últimos 6 meses · base 10.000 €</p>
+				</div>
+				<div class="flex gap-3 text-[10px]">
+					{#if data.stats?.cagr_pct != null}
+						<span class="text-[var(--color-text-muted)]">CAGR <span class="tabular text-[var(--color-text-secondary)]">{fmtPct(data.stats.cagr_pct)}</span></span>
+					{/if}
+					{#if data.stats?.snapshots > 0}
+						<span class="text-[var(--color-text-muted)]">{data.stats.snapshots} snapshots</span>
+					{/if}
+				</div>
+			</div>
+			<EquityCurve valuations={data.valuations} />
+		</div>
+	{/if}
 
 	<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 		<!-- Left: Positions / Status -->

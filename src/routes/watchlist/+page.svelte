@@ -1,6 +1,6 @@
 <script lang="ts">
 	let { data } = $props();
-	const watchlist = $derived((data.watchlist || []) as Array<any>);
+	const watchlist = $derived(data.watchlist || []);
 </script>
 
 <div class="p-6 space-y-6">
@@ -33,7 +33,7 @@
 							<td class="px-4 py-2 text-[var(--color-text-primary)]">{w.company_name}</td>
 							<td class="px-4 py-2 text-right tabular text-[var(--color-text-secondary)]">{w.target_entry_eur ? `${w.target_entry_eur.toFixed(2)} €` : '—'}</td>
 							<td class="px-4 py-2 text-right tabular text-[var(--color-text-secondary)]">{w.fair_value_eur ? `${w.fair_value_eur.toFixed(2)} €` : '—'}</td>
-							<td class="px-4 py-2 text-right tabular {w.score >= 75 ? 'text-[var(--color-up)]' : w.score >= 60 ? 'text-[var(--color-warn)]' : 'text-[var(--color-down)]'}">{w.score || '—'}</td>
+							<td class="px-4 py-2 text-right tabular {w.score == null ? 'text-[var(--color-text-muted)]' : w.score >= 75 ? 'text-[var(--color-up)]' : w.score >= 60 ? 'text-[var(--color-warn)]' : 'text-[var(--color-down)]'}">{w.score ?? '—'}</td>
 						</tr>
 					{/each}
 				</tbody>

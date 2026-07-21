@@ -1,6 +1,11 @@
 // Market data: indices, commodities, sectors, FX
 import { getQuote } from './yahoo';
 
+// Type guard to narrow (T | null)[] → T[] after Promise.allSettled / fallbacks.
+function isPresent<T>(v: T | null | undefined): v is T {
+	return v != null;
+}
+
 export const MARKET_TICKERS = {
 	indices: [
 		{ ticker: '^GSPC', name: 'S&P 500', category: 'Índices' },
@@ -53,15 +58,7 @@ export async function getMarketOverview() {
 	);
 	return results
 		.map((r) => (r.status === 'fulfilled' ? r.value : null))
-		.filter(Boolean) as Array<{
-		ticker: string;
-		name: string;
-		category: string;
-		price: number;
-		currency: string;
-		change_pct: number;
-		previous_close: number;
-	}>;
+		.filter(isPresent);
 }
 
 // S&P sector ETFs for sector rotation analysis
@@ -90,5 +87,64 @@ export async function getSectorPerformance() {
 			}
 		})
 	);
-	return results.map((r) => (r.status === 'fulfilled' ? r.value : null)).filter(Boolean);
+	return results.map((r) => (r.status === 'fulfilled' ? r.value : null)).filter(isPresent);
+}
+
+export interface MacroContext {
+	/** US 10-year Treasury yield, percent. */
+	us_10y: number | null;
+	/** US 13-week (3-month) Treasury bill yield, percent. */
+	us_13w: number | null;
+	/** German 10-year Bund yield, percent — proxy for eurozone risk-free rate. */
+	bund_10y: number | null;
+	/** VIX index level. */
+	vix: number | null;
+	/** 2s10s-like slope: US 10Y minus US 13W. Positive = normal curve, negative = inverted. */
+	curve_slope: number | null;
+	/** Qualitative rate regime derived from US_13W. */
+	regime: 'restrictive' | 'neutral' | 'expansive' | 'unknown';
+}
+
+// Yahoo tickers for macro indicators. ^TNX / ^IRX are US yields (in percent),
+// ^VIX is the volatility index. ^GTDEM10Y is the German Bund 10Y (Yahoo code).
+const MACRO_TICKERS = {
+	us_10y: '^TNX',
+	us_13w: '^IRX',
+	bund_10y: '^GTDEM10Y',
+	vix: '^VIX'
+};
+
+/**
+ * Live macro context derived from yields and VIX. Yahoo doesn't expose central
+ * bank policy rates directly, so we use market yields which are what actually
+ * drive discount rates for value investing. The curve slope (10Y - 13W) is a
+ * classic recession signal: negative = inverted = elevated recession risk.
+ */
+export async function getMacroContext(): Promise<MacroContext> {
+	const fetchRate = async (ticker: string): Promise<number | null> => {
+		try {
+			const q = await getQuote(ticker);
+			return q.price;
+		} catch {
+			return null;
+		}
+	};
+
+	const [us10y, us13w, bund10y, vix] = await Promise.all([
+		fetchRate(MACRO_TICKERS.us_10y),
+		fetchRate(MACRO_TICKERS.us_13w),
+		fetchRate(MACRO_TICKERS.bund_10y),
+		fetchRate(MACRO_TICKERS.vix)
+	]);
+
+	const curve_slope = us10y != null && us13w != null ? us10y - us13w : null;
+
+	let regime: MacroContext['regime'] = 'unknown';
+	if (us13w != null) {
+		if (us13w >= 3) regime = 'restrictive';
+		else if (us13w >= 1.5) regime = 'neutral';
+		else regime = 'expansive';
+	}
+
+	return { us_10y: us10y, us_13w: us13w, bund_10y: bund10y, vix, curve_slope, regime };
 }
