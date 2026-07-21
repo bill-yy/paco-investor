@@ -95,7 +95,10 @@ export interface MacroContext {
 	us_10y: number | null;
 	/** US 13-week (3-month) Treasury bill yield, percent. */
 	us_13w: number | null;
-	/** German 10-year Bund yield, percent — proxy for eurozone risk-free rate. */
+	/** Price of the eurozone sovereign bond ETF (XGLE.DE, EUR) — proxy for the Bund.
+	 *  Yahoo delisted the ^GT*10Y yield indices, so we track the ETF price instead.
+	 *  Price rises when yields fall (and vice versa), so the direction is inverted
+	 *  vs the yield, but the level still reflects eurozone risk-free conditions. */
 	bund_10y: number | null;
 	/** VIX index level. */
 	vix: number | null;
@@ -106,11 +109,13 @@ export interface MacroContext {
 }
 
 // Yahoo tickers for macro indicators. ^TNX / ^IRX are US yields (in percent),
-// ^VIX is the volatility index. ^GTDEM10Y is the German Bund 10Y (Yahoo code).
+// ^VIX is the volatility index. Yahoo delisted the European sovereign yield
+// indices (^GTDEM10Y, ^GDBR10Y, etc. all return 404), so the eurozone risk-free
+// proxy uses XGLE.DE — the Xtrackers Eurozone Government Bond UCITS ETF (EUR).
 const MACRO_TICKERS = {
 	us_10y: '^TNX',
 	us_13w: '^IRX',
-	bund_10y: '^GTDEM10Y',
+	bund_10y: 'XGLE.DE',
 	vix: '^VIX'
 };
 

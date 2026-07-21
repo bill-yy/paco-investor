@@ -169,8 +169,8 @@ export interface ValuationStats {
 	total_return_pct: number;
 	/** Compound annual growth rate from first to last snapshot. Null if < 1 year of data. */
 	cagr_pct: number | null;
-	/** Maximum peak-to-trough drawdown observed in the series. */
-	max_drawdown_pct: number;
+	/** Maximum peak-to-trough drawdown observed in the series. Null if <2 snapshots. */
+	max_drawdown_pct: number | null;
 	/** Latest total minus initial capital, in EUR. */
 	abs_gain_eur: number;
 	/** Benchmark return over the same window, normalized to the initial capital. */
@@ -193,7 +193,7 @@ export function getValuationStats(series: Valuation[] | null | undefined): Valua
 		return {
 			total_return_pct: 0,
 			cagr_pct: null,
-			max_drawdown_pct: 0,
+			max_drawdown_pct: null,
 			abs_gain_eur: 0,
 			benchmark_return_pct: null,
 			alpha_pct: null,
@@ -221,28 +221,29 @@ export function getValuationStats(series: Valuation[] | null | undefined): Valua
 	}
 
 	// Max drawdown: largest peak-to-trough drop in total_eur.
-	let max_drawdown_pct = 0;
+	// With <2 snapshots there is no series to measure a drawdown over, so we
+	// return null (not 0) — the UI then shows "—" consistently with alpha.
+	let max_drawdown_pct: number | null = null;
 	if (n >= 2) {
 		let peak = s[0].total_eur;
+		let worst = 0;
 		for (const v of s) {
 			if (v.total_eur > peak) peak = v.total_eur;
 			if (peak > 0) {
 				const dd = (v.total_eur - peak) / peak;
-				if (dd < max_drawdown_pct) max_drawdown_pct = dd;
+				if (dd < worst) worst = dd;
 			}
 		}
+		max_drawdown_pct = worst;
 	}
 
 	// Benchmark return over the same window, using its EUR series normalized
 	// to the initial capital (so it's directly comparable to total_return_pct).
+	// Requires >=2 snapshots: without an entry point there's no benchmark return
+	// to compare against, and we'd rather show "—" than fabricate a misleading 0.
 	let benchmark_return_pct: number | null = null;
 	let alpha_pct: number | null = null;
-	if (
-		n >= 2 &&
-		s[0].benchmark_eur != null &&
-		s[n - 1].benchmark_eur != null &&
-		s[0].benchmark_eur > 0
-	) {
+	if (n >= 2 && s[0].benchmark_eur != null && s[n - 1].benchmark_eur != null && s[0].benchmark_eur > 0) {
 		// Revalue the benchmark as if the initial capital had been invested in it.
 		const first = s[0];
 		const last = s[n - 1];

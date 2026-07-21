@@ -6,6 +6,8 @@
 		n == null ? '—' : `${n.toFixed(digits)}%`;
 	const fmtNum = (n: number | null, digits = 2) =>
 		n == null ? '—' : n.toFixed(digits);
+	const fmtEur = (n: number) =>
+		new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 2 }).format(n || 0);
 
 	// Regime badge color/text.
 	const regimeInfo = $derived.by(() => {
@@ -86,11 +88,17 @@
 			</div>
 		</div>
 
-		<!-- Bund (eurozone proxy) shown separately as it sometimes fails -->
+		<!-- Bund proxy: Yahoo delisted sovereign yield indices, so we track the
+		     XGLE.DE eurozone govt bond ETF price (EUR) as a directional proxy. -->
 		<div class="mt-3 border border-[var(--color-border)] rounded-lg bg-[var(--color-surface)] p-4 max-w-sm">
-			<div class="text-[10px] uppercase tracking-widest text-[var(--color-text-muted)]">Bund alemán 10Y</div>
-			<div class="text-xl font-bold tabular text-[var(--color-text-primary)] mt-1">{fmtPct(m.bund_10y)}</div>
-			<div class="text-[11px] text-[var(--color-text-muted)] mt-1">Tipo sin riesgo EUR · proxy BCE</div>
+			<div class="text-[10px] uppercase tracking-widest text-[var(--color-text-muted)]">Bonos soberanos EUR (proxy)</div>
+			<div class="text-xl font-bold tabular text-[var(--color-text-primary)] mt-1">
+				{m.bund_10y == null ? '—' : fmtEur(m.bund_10y)}
+			</div>
+			<div class="text-[11px] text-[var(--color-text-muted)] mt-1">
+				ETF XGLE.DE · sube cuando caen los tipos EUR
+				<span class="block text-[var(--color-text-muted)]/70 text-[10px] mt-0.5">(Yahoo ya no publica el rendimiento directo del Bund)</span>
+			</div>
 		</div>
 	</section>
 
