@@ -22,7 +22,7 @@
 	}
 </script>
 
-<!-- Mobile top bar (only visible < 768px) -->
+<!-- Mobile top bar -->
 <div class="md:hidden sticky top-0 z-30 flex items-center justify-between px-4 py-3 bg-[var(--color-bg-elevated)] border-b border-[var(--color-border)]">
 	<a href="/" class="flex items-center gap-2" onclick={closeNav}>
 		<div class="w-7 h-7 rounded-md bg-gradient-to-br from-[var(--color-accent)] to-[var(--color-up)] flex items-center justify-center">
@@ -47,16 +47,15 @@
 	<!-- Mobile drawer backdrop -->
 	{#if mobileNavOpen}
 		<button
-			class="md:hidden fixed inset-0 z-30 bg-black/60 backdrop-blur-sm cursor-pointer"
+			class="md:hidden fixed inset-0 z-30 bg-black/60 backdrop-blur-sm"
 			onclick={closeNav}
 			aria-label="Close navigation"
 		></button>
 	{/if}
 
-	<!-- Sidebar: in mobile it is hidden by default (display:none) and shown as overlay drawer when mobileNavOpen=true.
-	     In desktop (md+) it is always visible as a sticky sidebar. -->
+	<!-- Sidebar -->
 	<aside
-		class="{$mobileNavOpen ? 'flex' : 'hidden'} md:flex fixed md:sticky md:top-0 z-40 md:z-0 w-64 md:w-56 h-screen shrink-0 border-r border-[var(--color-border)] bg-[var(--color-bg-elevated)] flex-col"
+		class="fixed md:sticky md:top-0 z-40 md:z-0 w-64 md:w-56 h-screen md:h-screen shrink-0 border-r border-[var(--color-border)] bg-[var(--color-bg-elevated)] flex flex-col transition-transform duration-200 -translate-x-full md:translate-x-0 {mobileNavOpen ? 'translate-x-0' : ''}"
 	>
 		<div class="p-5 border-b border-[var(--color-border)]">
 			<div class="flex items-center gap-2.5">
