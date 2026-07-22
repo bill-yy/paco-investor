@@ -72,3 +72,18 @@ body {
 		linear-gradient(90deg, rgba(31, 41, 55, 0.4) 1px, transparent 1px);
 	background-size: 32px 32px;
 }
+
+/* Mobile sidebar drawer: hidden by default (translated off-screen),
+   visible when .sidebar-open is toggled. On desktop (768px+) the
+   sidebar is always visible via sticky positioning. */
+.sidebar-mobile {
+	transform: translateX(-100%);
+}
+.sidebar-mobile.sidebar-open {
+	transform: translateX(0);
+}
+@media (min-width: 768px) {
+	.sidebar-mobile {
+		transform: none !important;
+	}
+}
