@@ -55,7 +55,7 @@
 
 	<!-- Sidebar -->
 	<aside
-		class="fixed md:sticky md:top-0 z-40 md:z-0 w-64 md:w-56 h-screen shrink-0 border-r border-[var(--color-border)] bg-[var(--color-bg-elevated)] flex flex-col transition-transform duration-200 sidebar-mobile {mobileNavOpen ? 'sidebar-open' : ''}"
+		class="fixed top-0 left-0 md:sticky md:top-0 z-50 md:z-0 w-64 md:w-56 h-screen shrink-0 border-r border-[var(--color-border)] bg-[var(--color-bg-elevated)] flex flex-col transition-transform duration-200 sidebar-mobile {mobileNavOpen ? 'sidebar-open' : ''}"
 	>
 		<div class="p-5 border-b border-[var(--color-border)]">
 			<div class="flex items-center gap-2.5">
