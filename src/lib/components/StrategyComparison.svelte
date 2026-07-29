@@ -2,7 +2,8 @@
 	import { page } from '$app/state';
 
 	let { data } = $props();
-	let { comparison, allValuations } = $derived(data);
+	let comparison = $derived(data?.comparison ?? []);
+	let allValuations = $derived(data?.allValuations ?? {});
 
 	const fmtEur = (n: number) =>
 		new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n || 0);
