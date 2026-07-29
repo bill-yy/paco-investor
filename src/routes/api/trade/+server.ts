@@ -40,7 +40,13 @@ export const POST: RequestHandler = async ({ request }) => {
 		bear_case: body.bear_case,
 		score: body.score,
 		catalysts: body.catalysts,
-		risks: body.risks
+		risks: body.risks,
+		strategy_id: body.strategy_id || 'value',
+		stop_loss_eur: body.stop_loss_eur,
+		take_profit_eur: body.take_profit_eur,
+		entry_signal: body.entry_signal,
+		trade_plan: body.trade_plan,
+		exit_reason: body.exit_reason
 	});
 
 	return json(result, { status: 201 });

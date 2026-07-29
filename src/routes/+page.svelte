@@ -2,9 +2,12 @@
 	import Kpi from '$lib/components/Kpi.svelte';
 	import MarketTicker from '$lib/components/MarketTicker.svelte';
 	import EquityCurve from '$lib/components/EquityCurve.svelte';
+	import StrategyComparison from '$lib/components/StrategyComparison.svelte';
+	import ComparisonChart from '$lib/components/ComparisonChart.svelte';
 
 	let { data } = $props();
 	const p = $derived(data.portfolio);
+	const strategyId = $derived(data.strategyId || 'value');
 
 	const fmtEur = (n: number) =>
 		new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 2 }).format(n || 0);
@@ -21,6 +24,7 @@
 
 	const totalInvested = $derived(p.invested_eur || 0);
 	const totalCapital = $derived(data.marketValue?.total_eur ?? p.cash_eur + totalInvested);
+	const baselineCapital = $derived(p.strategy?.initial_capital_eur || 10000);
 
 	const sectors = $derived((data.sectors || []).slice().sort((a, b) => b.change_pct - a.change_pct));
 	const indices = $derived((data.market || []).filter((m) => m.category === 'Índices'));
@@ -34,13 +38,17 @@
 		: moodIdx / moodTotal < 0.35 ? { label: 'Risk-Off', color: 'down' }
 		: { label: 'Neutral', color: 'warn' }
 	);
+
+	const strategiesForChart = $derived(
+		(data.strategies || []).map((s) => ({ id: s.id, name: s.name, color: s.color }))
+	);
 </script>
 
 <div class="p-4 md:p-6 space-y-5 md:space-y-6">
 	<!-- Header -->
 	<header class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
 		<div>
-			<div class="text-[11px] uppercase tracking-widest text-[var(--color-text-muted)] font-medium">Dashboard</div>
+			<div class="text-[11px] uppercase tracking-widest text-[var(--color-text-muted)] font-medium">Dashboard · {p.strategy?.name}</div>
 			<h1 class="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)] mt-1">Cartera · Resumen ejecutivo</h1>
 		</div>
 		<div class="sm:text-right">
@@ -51,6 +59,20 @@
 			</div>
 		</div>
 	</header>
+
+	<!-- Strategy comparison cards -->
+	<StrategyComparison comparison={data.comparison} allValuations={data.allValuations} />
+
+	<!-- Comparison chart (all 3 strategies) -->
+	{#if (data.strategies?.length ?? 0) > 1}
+		<div class="border border-[var(--color-border)] rounded-lg bg-[var(--color-surface)] p-3 md:p-4">
+			<div class="flex items-center justify-between mb-3">
+				<h2 class="text-sm font-semibold text-[var(--color-text-primary)]">Comparativa de estrategias</h2>
+				<span class="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">{p.strategy?.name} seleccionada</span>
+			</div>
+			<ComparisonChart allValuations={data.allValuations} strategies={strategiesForChart} />
+		</div>
+	{/if}
 
 	<!-- KPI row -->
 	<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-3">
