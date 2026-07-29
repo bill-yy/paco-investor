@@ -98,7 +98,7 @@ tienen volumen diario alto (spread estrecho, filler garantizado incluso con
 | `DTE.DE`  | Deutsche Telekom         | Xetra    | Telecom          | 0.6        |
 | `VOW3.DE` | Volkswagen AG            | Xetra    | Automoción       | 1.3        |
 | `IFX.DE`  | Infineon Technologies    | Xetra    | Semiconductores  | 1.5        |
-| `DPW.DE`  | Deutsche Post            | Xetra    | Logística        | 1.1        |
+| `DHL.DE`  | DHL Group (ex-Deutsche Post) | Xetra    | Logística        | 1.1        |
 | `OR.PA`   | L'Oréal                  | Euronext | Consumo          | 0.8        |
 | `MC.PA`   | LVMH                     | Euronext | Lujo             | 1.1        |
 | `TTE.PA`  | TotalEnergies            | Euronext | Energía          | 0.8        |
@@ -328,45 +328,61 @@ capital, pero menos granularidad.
 
 ### 3.3 ETFs concretos (UCITS, cotizando en EUR)
 
-Todos **UCITS**, domiciliados en Irlanda/Francia/Alemania (eficiencia fiscal
-para no-residentes), cotizando en EUR en Xetra. ISIN verificado. TER real (no
-TER sintético). Ticker Yahoo Finance confirmado para cada uno.
+> ⚠️ **TODOS los tickers verificados contra Yahoo Finance en vivo (2026-07-30)**.
+> La cobertura de Yahoo para ETFs europeos es irregular: muchos ETFs populares
+> (VWCE.DE, EIMI.DE, VAGD.DE, SGLN.DE) devuelven *"No data found, symbol may be
+> delisted"* aunque existan en Xetra. **Los tickers de abajo son los que SÍ
+> responden** en Yahoo con `currency=EUR`. Antes de cada run del cron,
+> re-verificar con el script del [Apéndice A](#apéndice-a--verificación-de-tickers-ejecutar-antes-del-primer-run).
 
-| # | Clase de activo     | ETF                                        | ISIN          | TER    | Ticker Yahoo | Mercado |
-|---|---------------------|--------------------------------------------|---------------|--------|--------------|---------|
-| 1 | Acciones DM         | **Vanguard FTSE Developed World UCITS**    | IE00BK5BQT80  | 0.12%  | `VWCE.DE`    | Xetra   |
-| 2 | Acciones EM         | **iShares Core MSCI EM IMI UCITS**         | IE00BKM4GZ66  | 0.18%  | `EIMI.DE`    | Xetra   |
-| 3 | Bonos globales      | **Vanguard Global Aggregate Bond UCITS**   | IE00B18GC888  | 0.10%  | `VAGD.DE`    | Xetra   |
-| 4 | Oro físico          | **Invesco Physical Gold ETC**              | IE00B579F325  | 0.12%  | `8PSG.DE`    | Xetra   |
-| 5 | Bonos Euro Corp     | **iShares Core € Corp Bond UCITS**         | IE00B3F81R35  | 0.20%  | `IEAC.DE`    | Xetra   |
+Todos **UCITS/ETC**, domiciliados en Irlanda/Alemania, cotizando en EUR en Xetra
+o Euronext Amsterdam. ISIN y TER verificados. Ticker Yahoo Finance **confirmado
+vivo**.
 
-**Notas de selección**:
-- **VWCE.DE** es el ETF acumulación de Vanguard Developed World. Distribución
-  (VWRL.DE, ISIN IE00B3RPWM96) existe pero la versión de acumulación es más
-  eficiente fiscalmente (reinvierte dividendos automáticamente). Yahoo ticker
-  `VWCE.DE` devuelve `currency: "EUR"`.
-- **EIMI.DE** (Emerging Markets IMI) incluye small caps → más completo que el
-  MSCI EM estándar.
-- **VAGD.DE** (EUR-hedged al euro) → sin riesgo divisa, ideal para la cartera de
-  bonos. **Importante**: usar la versión hedged (VAGD), no la unhedged (VAGU),
-  para que el componente de bonos no añada volatilidad de divisa.
-- **8PSG.DE** es oro físico custodiado, ISIN IE00B579F325 (Invesco). Alternativa
-  válida: `SGLN.DE` (iShares Physical Gold, ISIN GB00B4ND3602, TER 0.12%).
-- **IEAC.DE** es EUR Corporate Investment Grade, sin riesgo divisa.
+| # | Clase de activo     | ETF                                        | ISIN          | TER    | Ticker Yahoo | Mercado | Precio aprox |
+|---|---------------------|--------------------------------------------|---------------|--------|--------------|---------|-------------|
+| 1 | Acciones DM         | **iShares Core MSCI World UCITS (Acc)**   | IE00B4L5Y983  | 0.20%  | `EUNL.DE`    | Xetra   | ~124 €      |
+| 2 | Acciones EM         | **Vanguard FTSE Emerging Markets (Acc)**  | IE00BK5QRX14  | 0.22%  | `VFEA.DE`    | Xetra   | ~74 €       |
+| 3 | Bonos Euro gobierno | **Xtrackers Eurozone Government Bond**     | LU0908508814  | 0.20%  | `DBXN.DE`    | Xetra   | ~213 €      |
+| 4 | Oro físico (ETC)    | **Invesco Physical Gold ETC**              | IE00B579F325  | 0.12%  | `8PSG.DE`    | Xetra   | ~339 €      |
+| 5 | Bonos Euro Corp     | **iShares Core € Corp Bond UCITS (Dist)**  | IE00B3F81R35  | 0.20%  | `IEAC.AS`    | Euronext| ~117 €      |
+
+**Notas de selección (importantes — por qué estos y no los obvios)**:
+
+- **EUNL.DE** (iShares Core MSCI World, Acc) en vez de VWCE.DE: VWCE.DE es más
+  barato (TER 0.12% vs 0.20%) **pero Yahoo no lo lista**. EUNL.DE es el
+  equivalente de iShares, MSCI World con ~1500 acciones developed, acumulación.
+  Mismo universo que VWCE (FTSE Developed). ISIN IE00B4L5Y983. ✅ verificado vivo.
+- **VFEA.DE** (Vanguard FTSE Emerging Markets, Acc) en vez de EIMI.DE: EIMI.DE
+  no responde en Yahoo. VFEA.DE sí — Vanguard EM, ~1900 acciones emergentes,
+  acumulación, TER 0.22%. ISIN IE00BK5QRX14. ✅ verificado vivo.
+- **DBXN.DE** (Xtrackers Eurozone Government Bond) en vez de VAGD.DE (Vanguard
+  Global Agg hedged, que no responde): DBXN es bonos soberanos Eurozona (DE/FR/
+  IT/ES) en EUR nativo — sin riesgo divisa por construcción. TER 0.20%. ISIN
+  LU0908508814. ✅ verificado. Alternativa global: `XG7S.DE` (Xtrackers Global
+  Government Bond, EUR, ~219 €) también funciona.
+- **8PSG.DE** (Invesco Physical Gold ETC): oro físico alodial custodiado, ISIN
+  IE00B579F325, TER 0.12%. ✅ verificado vivo. Alternativa válida y más barata
+  por acción: `XGDU.DE` (Xtrackers Physical Gold, EUR, ~54 €, ISIN IE00B4ND3602)
+  también responde en Yahoo — útil si se quiere fraccionar más fácil.
+- **IEAC.AS** (iShares Core € Corp Bond, Dist): bonos corporativos Euro
+  investment grade en EUR nativo. Yahoo lo lista en Euronext Amsterdam (`IEAC.AS`)
+  — **NO** en Xetra (`IEAC.DE` no responde). TER 0.20%. ISIN IE00B3F81R35.
+  ✅ verificado vivo.
 
 **Aporte por ETF (proporcional al peso objetivo)**:
 
-| ETF       | Peso | De 100 €/mes |
-|-----------|------|--------------|
-| VWCE.DE   | 50%  | 50 €         |
-| EIMI.DE   | 15%  | 15 €         |
-| VAGD.DE   | 20%  | 20 €         |
-| 8PSG.DE   | 10%  | 10 €         |
-| IEAC.DE   | 5%   | 5 €          |
+| ETF       | Peso | De 100 €/mes | Precio aprox | Acciones/mes (fracciones) |
+|-----------|------|--------------|--------------|---------------------------|
+| EUNL.DE   | 50%  | 50 €         | ~124 €       | 0.40                      |
+| VFEA.DE   | 15%  | 15 €         | ~74 €        | 0.20                      |
+| DBXN.DE   | 20%  | 20 €         | ~213 €       | 0.09                      |
+| 8PSG.DE   | 10%  | 10 €         | ~339 €       | 0.03                      |
+| IEAC.AS   | 5%   | 5 €          | ~117 €       | 0.04                      |
 
-Con precios actuales (~VWCE ~120 €, EIMI ~40 €, VAGD ~25 €, 8PSG ~40 €, IEAC
-~150 €), 100 €/mes no compra ni 1 acción de cada uno. Ver [§3.6](#36-dca-mensual-de-100-)
-para el manejo de fraccionamiento.
+> Con acciones enteras, 100 €/mes no compra ni 1 acción de DBXN (213 €) ni de
+> 8PSG (339 €). **La simulación DEBE usar fracciones** (el schema `shares REAL`
+> lo permite) o acumular cash hasta alcanzar el precio. Ver [§3.6](#36-dca-mensual-de-100-).
 
 ### 3.4 Reglas de rebalanceo
 
@@ -415,21 +431,20 @@ coste TER del `total_eur` de la estrategia funds. Dos opciones de implementació
 
 **TER medio de la cartera** (ponderado):
 ```
-VWCE 0.12% × 0.50 = 0.060%
-EIMI 0.18% × 0.15 = 0.027%
-VAGD 0.10% × 0.20 = 0.020%
-8PSG 0.12% × 0.10 = 0.012%
-IEAC 0.20% × 0.05 = 0.010%
+EUNL  0.20% × 0.50 = 0.100%
+VFEA  0.22% × 0.15 = 0.033%
+DBXN  0.20% × 0.20 = 0.040%
+8PSG  0.12% × 0.10 = 0.012%
+IEAC  0.20% × 0.05 = 0.010%
 ────────────────────────────────
-TOTAL TER medio             = 0.129%
+TOTAL TER medio             = 0.195%
 ```
 
-> ⚠️ El `ter_annual = 0.0022` (0.22%) sembrado en el schema es **conservador**
-> (algo más alto que el TER real de 0.129%). Para máxima fidelidad, actualizar a
-> `0.0013` (0.13%). El 0.22% incluye margen por tracking error + costes de
-> trading del rebalanceo. **Decisión**: dejar 0.22% para ser conservador y que la
-> estrategia se vea penalizada de forma realista (en la vida real hay más
-> costes ocultos que el TER).
+> El `ter_annual = 0.0022` (0.22%) sembrado en el schema es **conservador**
+> respecto al TER teórico de 0.195%. La diferencia (0.025%) cubre tracking error
+> + costes de trading del rebalanceo + spread bid-ask. **Decisión**: mantener
+> 0.22% para que la simulación penalice la estrategia de forma realista (en la
+> vida real hay más costes ocultos que el TER puro).
 
 ### 3.6 DCA mensual de 100 €
 
@@ -611,7 +626,7 @@ Eres Paco Funds, un gestor pasivo de ETFs (lazy portfolio). strategy_id="funds".
 Cada día 1 de mes a las 22:00 CET:
 1. Registrar aporte DCA 100 € (contributions + cash).
 2. Comprar ETFs según peso objetivo (fracciones):
-   VWCE.DE 50% | EIMI.DE 15% | VAGD.DE 20% | 8PSG.DE 10% | IEAC.DE 5%
+   EUNL.DE 50% | VFEA.DE 15% | DBXN.DE 20% | 8PSG.DE 10% | IEAC.AS 5%
    shares = (100 × peso) / precio_eur. Verificar currency=EUR en cada quote.
 3. Descontar TER: fee = NAV × (0.22%/365) × días_desde_último_snapshot.
 4. Rebalancear si mes ∈ {ene,abr,jul,oct} OR drift >5% en algún ETF.
@@ -629,13 +644,25 @@ Antes de arrancar cualquier cron, verificar que cada ticker responde y cotiza en
 EUR. Script de sanity check:
 
 ```bash
-for t in SAP.DE SIE.DE ALV.DE BMW.DE MBG.DE BAS.DE DTE.DE VOW3.DE IFX.DE DPW.DE \
-         OR.PA MC.PA TTE.PA AI.PA RMS.PA SAN.PA ENGI.PA ITX.MC SAN.MC BBVA.MC \
-         VWCE.DE EIMI.DE VAGD.DE 8PSG.DE IEAC.DE; do
-  curl -sS "https://pacoinvestor.billytech.es/api/quote?ticker=$t" \
-    | python -c "import json,sys; d=json.load(sys.stdin); \
-      print(f'{d[\"ticker\"]:10} {d[\"currency\"]:5} {d[\"price\"]:>10.2f} {d.get(\"exchange\",\"\")}')" \
+# ETFs (los que realmente responden en Yahoo con currency=EUR)
+for t in EUNL.DE VFEA.DE DBXN.DE 8PSG.DE IEAC.AS XGDU.DE XG7S.DE; do
+  curl -sS --max-time 8 "https://query1.finance.yahoo.com/v8/finance/chart/$t?interval=1d&range=5d" \
+    -H 'User-Agent: Mozilla/5.0' \
+    | python -c "import json,sys; d=json.load(sys.stdin); m=d['chart']['result'][0]['meta']; \
+      print(f'{m[\"symbol\"]:10} {m[\"currency\"]:5} {m.get(\"regularMarketPrice\",0):>10.2f} {m.get(\"exchangeName\",\"\")}')" \
     || echo "$t FAILED"
+  sleep 0.5
+done
+
+# Acciones del universo Trader
+for t in SAP.DE SIE.DE ALV.DE BMW.DE MBG.DE BAS.DE DTE.DE VOW3.DE IFX.DE DHL.DE \
+       OR.PA MC.PA TTE.PA AI.PA RMS.PA SAN.PA ENGI.PA ITX.MC SAN.MC BBVA.MC; do
+  curl -sS --max-time 8 "https://query1.finance.yahoo.com/v8/finance/chart/$t?interval=1d&range=5d" \
+    -H 'User-Agent: Mozilla/5.0' \
+    | python -c "import json,sys; d=json.load(sys.stdin); m=d['chart']['result'][0]['meta']; \
+      print(f'{m[\"symbol\"]:10} {m[\"currency\"]:5} {m.get(\"regularMarketPrice\",0):>10.2f} {m.get(\"exchangeName\",\"\")}')" \
+    || echo "$t FAILED"
+  sleep 0.3
 done
 ```
 

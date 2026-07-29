@@ -175,6 +175,19 @@ function migrate(db: Database.Database) {
 	// Multi-strategy support (v2): each table gets strategy_id column.
 	// Default 'value' for existing rows so nothing breaks.
 	createStrategiesTable(db);
+
+	// Create contributions table BEFORE anything else (it's needed by portfolio logic)
+	db.exec(`
+		CREATE TABLE IF NOT EXISTS contributions (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			strategy_id TEXT NOT NULL,
+			date TEXT NOT NULL,
+			amount_eur REAL NOT NULL,
+			UNIQUE(strategy_id, date)
+		);
+		CREATE INDEX IF NOT EXISTS idx_contributions_strategy ON contributions(strategy_id);
+	`);
+
 	addColumnIfMissingWithDefault(db, 'positions', 'strategy_id', 'TEXT', "'value'");
 	addColumnIfMissingWithDefault(db, 'trades', 'strategy_id', 'TEXT', "'value'");
 	addColumnIfMissingWithDefault(db, 'valuations', 'strategy_id', 'TEXT', "'value'");
@@ -194,18 +207,6 @@ function migrate(db: Database.Database) {
 
 	// Trading-specific fields on trades
 	addColumnIfMissing(db, 'trades', 'exit_reason', 'TEXT');
-
-	// Monthly contributions (DCA tracking for trader/funds strategies)
-	db.exec(`
-		CREATE TABLE IF NOT EXISTS contributions (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			strategy_id TEXT NOT NULL,
-			date TEXT NOT NULL,
-			amount_eur REAL NOT NULL,
-			UNIQUE(strategy_id, date)
-		);
-		CREATE INDEX IF NOT EXISTS idx_contributions_strategy ON contributions(strategy_id);
-	`);
 }
 
 function addColumnIfMissing(db: Database.Database, table: string, column: string, type: string) {
