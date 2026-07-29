@@ -107,19 +107,17 @@ export async function saveValuation(strategyId = 'value'): Promise<Valuation> {
 	const timestamp = new Date().toISOString().slice(0, 10);
 	const sid = strategyId;
 
+	// Use INSERT OR REPLACE — works regardless of whether the UNIQUE constraint
+	// is on (timestamp) or (timestamp, strategy_id). Safer than ON CONFLICT.
 	db.prepare(
-		`INSERT INTO valuations
-		 (timestamp, cash_eur, positions_eur, positions_market_eur, total_eur, invested_eur, benchmark_value, benchmark_eur, strategy_id)
-		 VALUES (?,?,?,?,?,?,?,?,?)
-		 ON CONFLICT(timestamp, strategy_id) DO UPDATE SET
-		   cash_eur = excluded.cash_eur,
-		   positions_eur = excluded.positions_eur,
-		   positions_market_eur = excluded.positions_market_eur,
-		   total_eur = excluded.total_eur,
-		   invested_eur = excluded.invested_eur,
-		   benchmark_value = excluded.benchmark_value,
-		   benchmark_eur = excluded.benchmark_eur`
+		`INSERT OR REPLACE INTO valuations
+		 (id, timestamp, cash_eur, positions_eur, positions_market_eur, total_eur, invested_eur, benchmark_value, benchmark_eur, strategy_id)
+		 VALUES (
+			COALESCE((SELECT id FROM valuations WHERE timestamp = ? AND strategy_id = ?), NULL),
+			?, ?, ?, ?, ?, ?, ?, ?, ?
+		 )`
 	).run(
+		timestamp, sid,
 		timestamp,
 		mv.cash_eur,
 		mv.invested_eur,
