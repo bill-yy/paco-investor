@@ -1,21 +1,54 @@
 // POST /api/snapshot — force a portfolio valuation snapshot on demand.
-//
-// Trades already capture a snapshot automatically (see executeTrade). This
-// endpoint lets the agent or an external cron capture a snapshot between trades
-// (e.g. weekly close with no activity). No body required.
+// Accepts optional ?strategy=value|trader|funds|all in the body or query.
+// Default: snapshot ALL strategies.
 import { json } from '@sveltejs/kit';
 import { saveValuation } from '$lib/server/valuation';
 import type { RequestHandler } from './$types';
 
-export const POST: RequestHandler = async () => {
+const ALL_STRATEGIES = ['value', 'trader', 'funds'];
+
+export const POST: RequestHandler = async ({ request, url }) => {
+	let body: any = {};
 	try {
-		const snapshot = await saveValuation();
-		return json({ ok: true, snapshot }, { status: 201 });
-	} catch (e: any) {
-		console.error('[snapshot] failed:', e);
-		return json({ ok: false, error: e?.message ?? 'snapshot failed' }, { status: 502 });
+		body = await request.json();
+	} catch {
+		// No body or invalid JSON — that's fine, use query param or default
 	}
+
+	const requested = body.strategy || url.searchParams.get('strategy') || 'all';
+	const strategies = requested === 'all' ? ALL_STRATEGIES : [requested];
+
+	const results: Record<string, any> = {};
+	const errors: Record<string, string> = {};
+
+	for (const sid of strategies) {
+		try {
+			results[sid] = await saveValuation(sid);
+		} catch (e: any) {
+			console.error(`[snapshot] strategy ${sid} failed:`, e);
+			errors[sid] = e?.message ?? 'failed';
+		}
+	}
+
+	const hasErrors = Object.keys(errors).length > 0;
+	return json(
+		{ ok: !hasErrors, snapshots: results, errors: hasErrors ? errors : undefined },
+		{ status: 201 }
+	);
 };
 
-// GET convenience alias — so the dashboard or a browser can trigger it too.
-export const GET: RequestHandler = POST;
+// GET convenience alias
+export const GET: RequestHandler = async ({ url }) => {
+	const requested = url.searchParams.get('strategy') || 'all';
+	const strategies = requested === 'all' ? ALL_STRATEGIES : [requested];
+
+	const results: Record<string, any> = {};
+	for (const sid of strategies) {
+		try {
+			results[sid] = await saveValuation(sid);
+		} catch (e: any) {
+			console.error(`[snapshot] strategy ${sid} failed:`, e);
+		}
+	}
+	return json({ ok: true, snapshots: results }, { status: 201 });
+};
