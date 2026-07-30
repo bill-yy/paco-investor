@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { getPortfolioSnapshot, getStrategies, getAllSnapshots, addContribution } from '$lib/server/portfolio';
-import { getMarketOverview, getSectorPerformance } from '$lib/server/market';
+import { getMarketOverview, getSectorPerformance, getStrategyMarketData } from '$lib/server/market';
 import { computeMarketValue, getValuations, getValuationStats, getValuationsByStrategy } from '$lib/server/valuation';
 
 export const load: PageServerLoad = async ({ url }) => {
@@ -39,7 +39,14 @@ export const load: PageServerLoad = async ({ url }) => {
 	}
 
 	try {
-		[market, sectors] = await Promise.all([getMarketOverview(), getSectorPerformance()]);
+		// For trader/funds, show their universe instead of generic indices
+		if (strategyId === 'trader' || strategyId === 'funds') {
+			const stratMarket = await getStrategyMarketData(strategyId);
+			market = stratMarket || [];
+			sectors = [];
+		} else {
+			[market, sectors] = await Promise.all([getMarketOverview(), getSectorPerformance()]);
+		}
 	} catch (e) {
 		console.error('Market data failed:', e);
 	}

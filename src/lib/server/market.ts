@@ -61,6 +61,68 @@ export async function getMarketOverview() {
 		.filter(isPresent);
 }
 
+// Strategy-specific tickers for the Trader and Funds dashboards.
+// Value uses the generic getMarketOverview() (indices, commodities, FX).
+export const TRADER_UNIVERSE = [
+	{ ticker: 'BTC-EUR', name: 'Bitcoin', category: 'Cripto' },
+	{ ticker: 'ETH-EUR', name: 'Ethereum', category: 'Cripto' },
+	{ ticker: 'SOL-EUR', name: 'Solana', category: 'Cripto' },
+	{ ticker: 'BNB-EUR', name: 'BNB', category: 'Cripto' },
+	{ ticker: 'XRP-EUR', name: 'XRP', category: 'Cripto' },
+	{ ticker: 'ADA-EUR', name: 'Cardano', category: 'Cripto' },
+	{ ticker: 'AVAX-EUR', name: 'Avalanche', category: 'Cripto' },
+	{ ticker: 'DOT-EUR', name: 'Polkadot', category: 'Cripto' },
+	{ ticker: 'LINK-EUR', name: 'Chainlink', category: 'Cripto' },
+	{ ticker: 'DOGE-EUR', name: 'Dogecoin', category: 'Cripto' },
+	{ ticker: 'SAP.DE', name: 'SAP', category: 'Acciones' },
+	{ ticker: 'SIE.DE', name: 'Siemens', category: 'Acciones' },
+	{ ticker: 'ALV.DE', name: 'Allianz', category: 'Acciones' },
+	{ ticker: 'BMW.DE', name: 'BMW', category: 'Acciones' },
+	{ ticker: 'IFX.DE', name: 'Infineon', category: 'Acciones' },
+	{ ticker: 'DTE.DE', name: 'Deutsche Telekom', category: 'Acciones' },
+	{ ticker: 'MC.PA', name: 'LVMH', category: 'Acciones' },
+	{ ticker: 'OR.PA', name: "L'Oréal", category: 'Acciones' },
+	{ ticker: 'TTE.PA', name: 'TotalEnergies', category: 'Acciones' },
+	{ ticker: 'ITX.MC', name: 'Inditex', category: 'Acciones' },
+	{ ticker: 'BBVA.MC', name: 'BBVA', category: 'Acciones' }
+];
+
+export const FUNDS_UNIVERSE = [
+	{ ticker: 'EUNL.DE', name: 'MSCI World', category: 'Acciones DM', target_pct: 50 },
+	{ ticker: 'VFEA.DE', name: 'Emerging Markets', category: 'Acciones EM', target_pct: 15 },
+	{ ticker: 'DBXN.DE', name: 'Euro Gov Bonds', category: 'Bonos soberanos', target_pct: 20 },
+	{ ticker: '8PSG.DE', name: 'Oro físico', category: 'Oro', target_pct: 10 },
+	{ ticker: 'IEAC.AS', name: '€ Corp Bonds', category: 'Bonos corporativos', target_pct: 5 }
+];
+
+export async function getStrategyMarketData(strategyId: string) {
+	const tickers = strategyId === 'trader'
+		? TRADER_UNIVERSE
+		: strategyId === 'funds'
+		? FUNDS_UNIVERSE
+		: null; // null = use generic overview
+
+	if (!tickers) return null;
+
+	const results = await Promise.allSettled(
+		tickers.map(async (item) => {
+			try {
+				const q = await getQuote(item.ticker);
+				return {
+					...item,
+					price: q.price,
+					currency: q.currency,
+					change_pct: q.changePercent,
+					previous_close: q.previousClose
+				};
+			} catch {
+				return { ...item, price: 0, currency: '', change_pct: 0, previous_close: 0 };
+			}
+		})
+	);
+	return results.map((r) => (r.status === 'fulfilled' ? r.value : null)).filter(isPresent);
+}
+
 // S&P sector ETFs for sector rotation analysis
 export const SECTOR_ETFS = [
 	{ ticker: 'XLK', name: 'Tecnología' },

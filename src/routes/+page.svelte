@@ -202,26 +202,28 @@
 
 		<!-- Right column: market + sectors -->
 		<div class="space-y-4">
-			<MarketPanel items={marketItems} />
+			<MarketPanel items={marketItems} {strategyId} />
 
-			<!-- Sector heatmap -->
-			<div class="border border-[var(--color-border)] rounded-lg bg-[var(--color-surface)] p-3">
-				<div class="flex items-center justify-between mb-2">
-					<h2 class="text-xs font-semibold text-[var(--color-text-primary)]">Sectores S&P</h2>
-					<span class="text-[9px] uppercase tracking-wider text-[var(--color-text-muted)]">Hoy</span>
+			{#if strategyId === 'value'}
+				<!-- Sector heatmap (only relevant for value) -->
+				<div class="border border-[var(--color-border)] rounded-lg bg-[var(--color-surface)] p-3">
+					<div class="flex items-center justify-between mb-2">
+						<h2 class="text-xs font-semibold text-[var(--color-text-primary)]">Sectores S&P</h2>
+						<span class="text-[9px] uppercase tracking-wider text-[var(--color-text-muted)]">Hoy</span>
+					</div>
+					<div class="grid grid-cols-3 gap-1">
+						{#each sectors as s}
+							<div
+								class="p-1.5 rounded text-center border"
+								style="background-color: {s.change_pct >= 0 ? `rgba(16, 185, 129, ${Math.min(0.5, 0.15 + Math.abs(s.change_pct) * 8)})` : `rgba(239, 68, 68, ${Math.min(0.5, 0.15 + Math.abs(s.change_pct) * 8)})`}; border-color: {s.change_pct >= 0 ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'}"
+							>
+								<div class="text-[8px] text-white/80 truncate">{s.name}</div>
+								<div class="text-[10px] font-semibold tabular text-white">{(s.change_pct * 100).toFixed(1)}%</div>
+							</div>
+						{/each}
+					</div>
 				</div>
-				<div class="grid grid-cols-3 gap-1">
-					{#each sectors as s}
-						<div
-							class="p-1.5 rounded text-center border"
-							style="background-color: {s.change_pct >= 0 ? `rgba(16, 185, 129, ${Math.min(0.5, 0.15 + Math.abs(s.change_pct) * 8)})` : `rgba(239, 68, 68, ${Math.min(0.5, 0.15 + Math.abs(s.change_pct) * 8)})`}; border-color: {s.change_pct >= 0 ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'}"
-						>
-							<div class="text-[8px] text-white/80 truncate">{s.name}</div>
-							<div class="text-[10px] font-semibold tabular text-white">{(s.change_pct * 100).toFixed(1)}%</div>
-						</div>
-					{/each}
-				</div>
-			</div>
+			{/if}
 		</div>
 	</div>
 
