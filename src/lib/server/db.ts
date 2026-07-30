@@ -67,8 +67,11 @@ function migrate(db: Database.Database) {
 			fx_rate REAL NOT NULL,
 			fee_eur REAL NOT NULL DEFAULT 0,
 			thesis TEXT,
-			created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-			FOREIGN KEY (ticker) REFERENCES positions(ticker)
+			created_at INTEGER NOT NULL DEFAULT (unixepoch())
+			-- NOTE: no FOREIGN KEY to positions(ticker): under multi-strategy schema,
+			-- positions(ticker) is no longer UNIQUE (only UNIQUE(ticker, strategy_id)),
+			-- so SQLite would reject the FK with "foreign key mismatch". The application
+			-- layer enforces ticker validity instead.
 		);
 
 		CREATE INDEX IF NOT EXISTS idx_trades_ticker ON trades(ticker);
@@ -93,8 +96,8 @@ function migrate(db: Database.Database) {
 			pay_date TEXT,
 			amount_local REAL NOT NULL,
 			amount_eur REAL NOT NULL,
-			fx_rate REAL,
-			FOREIGN KEY (ticker) REFERENCES positions(ticker)
+			fx_rate REAL
+			-- NOTE: no FOREIGN KEY to positions(ticker) (see trades note above).
 		);
 
 		CREATE TABLE IF NOT EXISTS fx_rates (
@@ -195,6 +198,10 @@ function migrate(db: Database.Database) {
 	// Drop the old UNIQUE(ticker) constraint on positions and replace with
 	// UNIQUE(ticker, strategy_id) so the same stock can exist in multiple strategies.
 	dropPositionsUniqueConstraint(db);
+	// Once positions is multi-strategy, the legacy FOREIGN KEY (ticker) REFERENCES
+	// positions(ticker) on trades/dividends becomes invalid (ticker is no longer UNIQUE).
+	// Recreate those tables without the FK so SQLite doesn't throw "foreign key mismatch".
+	dropBrokenTickerForeignKeys(db);
 
 	// Update valuations UNIQUE to be (timestamp, strategy_id) instead of just (timestamp)
 	dropValuationsUniqueConstraint(db);
@@ -241,45 +248,62 @@ function dropPositionsUniqueConstraint(db: Database.Database) {
 
 	console.log('[migration] Recreating positions table to remove UNIQUE(ticker) constraint...');
 
-	db.exec(`
-		CREATE TABLE IF NOT EXISTS positions_new (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			ticker TEXT NOT NULL,
-			isin TEXT,
-			company_name TEXT NOT NULL,
-			market TEXT NOT NULL,
-			sector TEXT NOT NULL,
-			currency TEXT NOT NULL,
-			shares REAL NOT NULL DEFAULT 0,
-			avg_price_local REAL NOT NULL DEFAULT 0,
-			avg_price_eur REAL NOT NULL DEFAULT 0,
-			opened_at TEXT NOT NULL,
-			fair_value_eur REAL,
-			thesis TEXT,
-			bear_case TEXT,
-			score INTEGER,
-			catalysts TEXT,
-			risks TEXT,
-			status TEXT NOT NULL DEFAULT 'open',
-			created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-			strategy_id TEXT NOT NULL DEFAULT 'value',
-			stop_loss_eur REAL,
-			take_profit_eur REAL,
-			entry_signal TEXT,
-			trade_plan TEXT,
-			UNIQUE(ticker, strategy_id)
-		);
+	// CRITICAL: foreign_keys is ON (set in getDb). DROP TABLE positions fails with
+	// "FOREIGN KEY constraint failed" because trades/dividends reference positions(ticker).
+	// We must disable FK enforcement during the recreate. PRAGMA foreign_keys cannot be
+	// changed inside a transaction, so we toggle it here in autocommit mode.
+	const fkWasOn = (db.pragma('foreign_keys', { simple: true }) as unknown as number) === 1;
+	if (fkWasOn) db.pragma('foreign_keys = OFF');
 
-		INSERT INTO positions_new (id, ticker, isin, company_name, market, sector, currency, shares, avg_price_local, avg_price_eur, opened_at, fair_value_eur, thesis, bear_case, score, catalysts, risks, status, created_at, strategy_id, stop_loss_eur, take_profit_eur, entry_signal, trade_plan)
-		SELECT id, ticker, isin, company_name, market, sector, currency, shares, avg_price_local, avg_price_eur, opened_at, fair_value_eur, thesis, bear_case, score, catalysts, risks, status, created_at,
-			COALESCE(strategy_id, 'value'),
-			NULL, NULL, NULL, NULL
-		FROM positions;
+	try {
+		db.exec(`
+			DROP TABLE IF EXISTS positions_new;
+			CREATE TABLE positions_new (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				ticker TEXT NOT NULL,
+				isin TEXT,
+				company_name TEXT NOT NULL,
+				market TEXT NOT NULL,
+				sector TEXT NOT NULL,
+				currency TEXT NOT NULL,
+				shares REAL NOT NULL DEFAULT 0,
+				avg_price_local REAL NOT NULL DEFAULT 0,
+				avg_price_eur REAL NOT NULL DEFAULT 0,
+				opened_at TEXT NOT NULL,
+				fair_value_eur REAL,
+				thesis TEXT,
+				bear_case TEXT,
+				score INTEGER,
+				catalysts TEXT,
+				risks TEXT,
+				status TEXT NOT NULL DEFAULT 'open',
+				created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+				strategy_id TEXT NOT NULL DEFAULT 'value',
+				stop_loss_eur REAL,
+				take_profit_eur REAL,
+				entry_signal TEXT,
+				trade_plan TEXT,
+				UNIQUE(ticker, strategy_id)
+			);
 
-		DROP TABLE positions;
-		ALTER TABLE positions_new RENAME TO positions;
-		CREATE INDEX IF NOT EXISTS idx_positions_strategy ON positions(strategy_id);
-	`);
+			INSERT INTO positions_new (id, ticker, isin, company_name, market, sector, currency, shares, avg_price_local, avg_price_eur, opened_at, fair_value_eur, thesis, bear_case, score, catalysts, risks, status, created_at, strategy_id, stop_loss_eur, take_profit_eur, entry_signal, trade_plan)
+			SELECT id, ticker, isin, company_name, market, sector, currency, shares, avg_price_local, avg_price_eur, opened_at, fair_value_eur, thesis, bear_case, score, catalysts, risks, status, created_at,
+				COALESCE(strategy_id, 'value'),
+				NULL, NULL, NULL, NULL
+			FROM positions;
+
+			DROP TABLE positions;
+			ALTER TABLE positions_new RENAME TO positions;
+			CREATE INDEX IF NOT EXISTS idx_positions_strategy ON positions(strategy_id);
+		`);
+		// Verify referential integrity after recreation
+		const violations = db.pragma('foreign_key_check') as unknown as unknown[];
+		if (violations.length > 0) {
+			console.error('[migration] foreign_key_check violations after positions recreation:', violations);
+		}
+	} finally {
+		if (fkWasOn) db.pragma('foreign_keys = ON');
+	}
 }
 
 function dropValuationsUniqueConstraint(db: Database.Database) {
@@ -313,6 +337,42 @@ function dropValuationsUniqueConstraint(db: Database.Database) {
 		ALTER TABLE valuations_new RENAME TO valuations;
 		CREATE INDEX IF NOT EXISTS idx_valuations_strategy ON valuations(strategy_id);
 	`);
+}
+
+/**
+ * Under the multi-strategy schema, positions(ticker) is no longer UNIQUE
+ * (only UNIQUE(ticker, strategy_id)). Any legacy FOREIGN KEY (ticker)
+ * REFERENCES positions(ticker) on trades/dividends is therefore invalid and
+ * makes SQLite throw "foreign key mismatch" on queries/PRAGMA foreign_key_check.
+ * This recreates those tables WITHOUT the FK constraint, preserving all data.
+ * Idempotent: skips tables that no longer have the broken FK.
+ */
+function dropBrokenTickerForeignKeys(db: Database.Database) {
+	for (const table of ['trades', 'dividends']) {
+		const sql = (db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name=?").get(table) as { sql: string } | undefined)?.sql || '';
+		if (!sql.includes('FOREIGN KEY')) continue; // already clean
+		console.log(`[migration] Recreating ${table} to drop broken FOREIGN KEY to positions(ticker)...`);
+
+		const fkWasOn = (db.pragma('foreign_keys', { simple: true }) as unknown as number) === 1;
+		if (fkWasOn) db.pragma('foreign_keys = OFF');
+		try {
+			const oldCols = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+			db.exec(`DROP TABLE IF EXISTS ${table}_clean;`);
+			db.exec(`CREATE TABLE ${table}_clean (id INTEGER PRIMARY KEY AUTOINCREMENT, ${oldCols.filter(c=>c.name!=='id').map(c=>c.name).join(', ')});`);
+			const colList = oldCols.map((c) => c.name).join(', ');
+			db.exec(`INSERT INTO ${table}_clean (${colList}) SELECT ${colList} FROM ${table};`);
+			db.exec(`DROP TABLE ${table};`);
+			db.exec(`ALTER TABLE ${table}_clean RENAME TO ${table};`);
+			// Recreate known indexes
+			if (table === 'trades') {
+				db.exec('CREATE INDEX IF NOT EXISTS idx_trades_ticker ON trades(ticker);');
+				db.exec('CREATE INDEX IF NOT EXISTS idx_trades_date ON trades(executed_at);');
+				db.exec('CREATE INDEX IF NOT EXISTS idx_trades_strategy ON trades(strategy_id);');
+			}
+		} finally {
+			if (fkWasOn) db.pragma('foreign_keys = ON');
+		}
+	}
 }
 
 function createStrategiesTable(db: Database.Database) {
