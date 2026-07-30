@@ -21,7 +21,11 @@
 
 	const totalInvested = $derived(p.invested_eur || 0);
 	const totalCapital = $derived(data.marketValue?.total_eur ?? p.cash_eur + totalInvested);
-	const baselineCapital = $derived(p.strategy?.initial_capital_eur || 0);
+	// baselineCapital = total capital put into strategy (initial + DCA contributions)
+	// Falls back to initial_capital_eur for backward compat
+	const baselineCapital = $derived(
+		p.capital_invested ?? p.strategy?.initial_capital_eur ?? 0
+	);
 
 	const sectors = $derived((data.sectors || []).slice().sort((a, b) => b.change_pct - a.change_pct));
 	const marketItems = $derived(data.market || []);
