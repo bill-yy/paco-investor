@@ -245,7 +245,9 @@ export function getPortfolioSnapshot(strategyId?: string) {
 		trades,
 		invested_eur,
 		cash_eur: Math.max(0, cash_eur),
-		position_count: positions.length
+		position_count: positions.length,
+		// Total capital put into this strategy (initial + DCA contributions)
+		capital_invested: initialCapital + contributions
 	};
 }
 

@@ -78,18 +78,18 @@ export const load: PageServerLoad = async ({ url }) => {
 		comparison = allSnapshots.map((snap) => {
 			const mv = allValuations[snap.strategy_id] || [];
 			const latest = mv[mv.length - 1];
-			const baseline = snap.strategy?.initial_capital_eur || 0;
-			const contributions = (snap.strategy?.monthly_contribution_eur || 0) * Math.max(0, mv.length);
-			const totalInvested = baseline + contributions;
+			// Total capital put in = initial_capital + real DCA contributions from DB
+			const totalInvested = snap.capital_invested ?? snap.strategy?.initial_capital_eur ?? 0;
+			const currentTotal = latest?.total_eur ?? snap.cash_eur + (snap.invested_eur || 0);
 			return {
 				strategy_id: snap.strategy_id,
 				name: snap.strategy?.name || snap.strategy_id,
 				color: snap.strategy?.color || '#3b82f6',
 				icon: snap.strategy?.icon || 'P',
 				type: snap.strategy?.type || 'value',
-				total_eur: latest?.total_eur ?? snap.cash_eur,
+				total_eur: currentTotal,
 				total_invested: totalInvested,
-				return_pct: totalInvested > 0 ? ((latest?.total_eur ?? snap.cash_eur) - totalInvested) / totalInvested : 0,
+				return_pct: totalInvested > 0 ? (currentTotal - totalInvested) / totalInvested : 0,
 				positions: snap.position_count,
 				monthly_contribution: snap.strategy?.monthly_contribution_eur || 0,
 				initial_capital: snap.strategy?.initial_capital_eur || 0,
