@@ -13,10 +13,13 @@ export function getDb(): Database.Database {
 	// Ensure data dir exists
 	const dataDir = path.dirname(DB_PATH);
 	fs.mkdirSync(dataDir, { recursive: true });
-	db = new Database(DB_PATH);
-	db.pragma('journal_mode = WAL');
-	db.pragma('foreign_keys = ON');
-	migrate(db);
+	const conn = new Database(DB_PATH);
+	conn.pragma('journal_mode = WAL');
+	conn.pragma('foreign_keys = ON');
+	migrate(conn);
+	// Only cache once migration fully succeeds — otherwise every future call
+	// would reuse a half-migrated connection and never retry.
+	db = conn;
 	return db;
 }
 
@@ -296,10 +299,20 @@ function dropPositionsUniqueConstraint(db: Database.Database) {
 			ALTER TABLE positions_new RENAME TO positions;
 			CREATE INDEX IF NOT EXISTS idx_positions_strategy ON positions(strategy_id);
 		`);
-		// Verify referential integrity after recreation
-		const violations = db.pragma('foreign_key_check') as unknown as unknown[];
-		if (violations.length > 0) {
-			console.error('[migration] foreign_key_check violations after positions recreation:', violations);
+		// Verify referential integrity after recreation.
+		// NOTE: foreign_key_check can itself throw "foreign key mismatch" if
+		// trades/dividends still have a broken FK to positions(ticker).
+		// That's expected at this point — dropBrokenTickerForeignKeys() cleans
+		// those up next. We must NOT abort the entire migration here, or else
+		// all subsequent migrations (exit_reason column, valuations UNIQUE,
+		// etc.) never run and getDb() caches a half-migrated connection.
+		try {
+			const violations = db.pragma('foreign_key_check') as unknown as unknown[];
+			if (violations.length > 0) {
+				console.error('[migration] foreign_key_check violations after positions recreation:', violations);
+			}
+		} catch (fkCheckErr) {
+			console.warn('[migration] foreign_key_check skipped (broken FK on trades/dividends will be cleaned next):', (fkCheckErr as Error).message);
 		}
 	} finally {
 		if (fkWasOn) db.pragma('foreign_keys = ON');
