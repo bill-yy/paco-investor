@@ -1,9 +1,9 @@
 <script lang="ts">
 	import Kpi from '$lib/components/Kpi.svelte';
-	import MarketTicker from '$lib/components/MarketTicker.svelte';
 	import EquityCurve from '$lib/components/EquityCurve.svelte';
 	import StrategyComparison from '$lib/components/StrategyComparison.svelte';
 	import ComparisonChart from '$lib/components/ComparisonChart.svelte';
+	import MarketPanel from '$lib/components/MarketPanel.svelte';
 
 	let { data } = $props();
 	const p = $derived(data.portfolio);
@@ -11,28 +11,23 @@
 
 	const fmtEur = (n: number) =>
 		new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 2 }).format(n || 0);
-
 	const fmtEurShort = (n: number) => {
 		if (Math.abs(n) >= 1000) return new Intl.NumberFormat('es-ES', { maximumFractionDigits: 1 }).format(n / 1000) + 'k €';
 		return fmtEur(n);
 	};
-
 	const fmtPct = (n: number) =>
 		new Intl.NumberFormat('es-ES', { style: 'percent', maximumFractionDigits: 2 }).format(n || 0);
-
 	const fmtDate = (s: string) => new Date(s).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
 
 	const totalInvested = $derived(p.invested_eur || 0);
 	const totalCapital = $derived(data.marketValue?.total_eur ?? p.cash_eur + totalInvested);
-	const baselineCapital = $derived(p.strategy?.initial_capital_eur || 10000);
+	const baselineCapital = $derived(p.strategy?.initial_capital_eur || 0);
 
 	const sectors = $derived((data.sectors || []).slice().sort((a, b) => b.change_pct - a.change_pct));
-	const indices = $derived((data.market || []).filter((m) => m.category === 'Índices'));
-	const commodities = $derived((data.market || []).filter((m) => m.category === 'Commodities'));
-	const rates = $derived((data.market || []).filter((m) => m.category === 'Tipos' || m.category === 'Divisas'));
+	const marketItems = $derived(data.market || []);
 
-	const moodIdx = $derived(indices.filter((i) => i.change_pct > 0).length);
-	const moodTotal = $derived(indices.length || 1);
+	const moodIdx = $derived(marketItems.filter((i) => i.category === 'Índices' && i.change_pct > 0).length);
+	const moodTotal = $derived(marketItems.filter((i) => i.category === 'Índices').length || 1);
 	const mood = $derived(
 		moodIdx / moodTotal > 0.65 ? { label: 'Risk-On', color: 'up' }
 		: moodIdx / moodTotal < 0.35 ? { label: 'Risk-Off', color: 'down' }
@@ -42,14 +37,23 @@
 	const strategiesForChart = $derived(
 		(data.strategies || []).map((s) => ({ id: s.id, name: s.name, color: s.color }))
 	);
+
+	// Strategy-specific labels
+	const strategyDesc = $derived(
+		strategyId === 'value' ? 'Análisis fundamental · 3-7 años'
+		: strategyId === 'trader' ? 'Swing trading técnico · 5-30 días'
+		: 'ETFs pasivos · rebalanceo trimestral'
+	);
 </script>
 
 <div class="p-4 md:p-6 space-y-5 md:space-y-6">
 	<!-- Header -->
 	<header class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
 		<div>
-			<div class="text-[11px] uppercase tracking-widest text-[var(--color-text-muted)] font-medium">Dashboard · {p.strategy?.name}</div>
-			<h1 class="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)] mt-1">Cartera · Resumen ejecutivo</h1>
+			<div class="text-[11px] uppercase tracking-widest text-[var(--color-text-muted)] font-medium">
+				{p.strategy?.name ?? 'Dashboard'}
+			</div>
+			<h1 class="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)] mt-1">{strategyDesc}</h1>
 		</div>
 		<div class="sm:text-right">
 			<div class="text-xs text-[var(--color-text-muted)] capitalize">{new Date().toLocaleDateString('es-ES', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}</div>
@@ -63,23 +67,17 @@
 	<!-- Strategy comparison cards -->
 	<StrategyComparison comparison={data.comparison} allValuations={data.allValuations} />
 
-	<!-- Comparison chart (all 3 strategies) -->
-	{#if (data.strategies?.length ?? 0) > 1}
-		<div class="border border-[var(--color-border)] rounded-lg bg-[var(--color-surface)] p-3 md:p-4">
-			<div class="flex items-center justify-between mb-3">
-				<h2 class="text-sm font-semibold text-[var(--color-text-primary)]">Comparativa de estrategias</h2>
-				<span class="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">{p.strategy?.name} seleccionada</span>
-			</div>
-			<ComparisonChart allValuations={data.allValuations} strategies={strategiesForChart} />
-		</div>
-	{/if}
-
 	<!-- KPI row -->
-	<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-3">
+	<div class="grid grid-cols-2 md:grid-cols-5 gap-2 md:gap-3">
 		<Kpi label="Patrimonio" value={fmtEur(totalCapital)} hint={data.marketValue ? 'A precio de mercado' : 'Invertido + liquidez'} />
 		<Kpi label="Invertido" value={fmtEur(totalInvested)} hint="{fmtPct(totalCapital > 0 ? totalInvested / totalCapital : 0)} del capital" />
 		<Kpi label="Liquidez" value={fmtEur(p.cash_eur)} hint="{fmtPct(totalCapital > 0 ? p.cash_eur / totalCapital : 0)} disponible" accent={p.cash_eur / (totalCapital || 1) > 0.4 ? 'warn' : 'default'} />
-		<Kpi label="Rentabilidad" value={fmtPct(totalCapital > 0 ? (totalCapital - 10000) / 10000 : 0)} change={(totalCapital - 10000) / 10000 * 100} accent={totalCapital >= 10000 ? 'up' : 'down'} />
+		<Kpi
+			label="Rentabilidad"
+			value={baselineCapital > 0 ? fmtPct((totalCapital - baselineCapital) / baselineCapital) : '—'}
+			change={baselineCapital > 0 ? ((totalCapital - baselineCapital) / baselineCapital) * 100 : 0}
+			accent={totalCapital >= baselineCapital ? 'up' : 'down'}
+		/>
 		<Kpi
 			label="vs S&P 500"
 			value={data.stats?.alpha_pct != null ? fmtPct(data.stats.alpha_pct) : '—'}
@@ -88,41 +86,46 @@
 		/>
 	</div>
 
-	<!-- Equity curve -->
-	{#if data.valuations?.length > 0}
-		<div class="border border-[var(--color-border)] rounded-lg bg-[var(--color-surface)] p-3 md:p-4 overflow-x-auto">
-			<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 gap-1">
-				<div>
-					<h2 class="text-sm font-semibold text-[var(--color-text-primary)]">Evolución del patrimonio</h2>
-					<p class="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] mt-0.5">Últimos 6 meses · base 10.000 €</p>
-				</div>
-				<div class="flex gap-3 text-[10px]">
-					{#if data.stats?.cagr_pct != null}
-						<span class="text-[var(--color-text-muted)]">CAGR <span class="tabular text-[var(--color-text-secondary)]">{fmtPct(data.stats.cagr_pct)}</span></span>
-					{/if}
-					{#if data.stats?.snapshots > 0}
-						<span class="text-[var(--color-text-muted)]">{data.stats.snapshots} snapshots</span>
-					{/if}
-				</div>
-			</div>
-			<EquityCurve valuations={data.valuations} />
-		</div>
-	{/if}
-
+	<!-- Two-column: equity curve + market panel -->
 	<div class="grid grid-cols-1 lg:grid-cols-3 gap-5 md:gap-6">
-		<!-- Left: Positions / Status -->
+		<!-- Left: equity curves (2/3 width) -->
 		<div class="lg:col-span-2 space-y-5 md:space-y-6">
+			{#if (data.strategies?.length ?? 0) > 1 && (data.allValuations ?? Object.keys(data.allValuations ?? {}).length) > 0}
+				<div class="border border-[var(--color-border)] rounded-lg bg-[var(--color-surface)] p-3 md:p-4">
+					<div class="flex items-center justify-between mb-3">
+						<h2 class="text-sm font-semibold text-[var(--color-text-primary)]">Comparativa de estrategias</h2>
+						<span class="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">Patrimonio total</span>
+					</div>
+					<ComparisonChart allValuations={data.allValuations} strategies={strategiesForChart} />
+				</div>
+			{/if}
+
+			{#if data.valuations?.length > 0}
+				<div class="border border-[var(--color-border)] rounded-lg bg-[var(--color-surface)] p-3 md:p-4">
+					<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 gap-1">
+						<div>
+							<h2 class="text-sm font-semibold text-[var(--color-text-primary)]">{p.strategy?.name} — Evolución</h2>
+							<p class="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] mt-0.5">{data.valuations.length} snapshots</p>
+						</div>
+						{#if data.stats?.cagr_pct != null}
+							<span class="text-[10px] text-[var(--color-text-muted)]">CAGR <span class="tabular text-[var(--color-text-secondary)]">{fmtPct(data.stats.cagr_pct)}</span></span>
+						{/if}
+					</div>
+					<EquityCurve valuations={data.valuations} />
+				</div>
+			{/if}
+
+			<!-- Positions -->
 			{#if p.position_count === 0}
 				<div class="border border-dashed border-[var(--color-border-strong)] rounded-xl p-8 md:p-10 text-center bg-[var(--color-surface)]">
-					<div class="text-[var(--color-text-secondary)] font-medium">Cartera recién inicializada</div>
-					<p class="text-[var(--color-text-muted)] text-sm mt-2">10.000 € en liquidez · Pendiente de primera compra</p>
-					<div class="mt-4 inline-flex items-center gap-2 text-xs text-[var(--color-warn)] bg-[var(--color-warn)]/10 px-3 py-1.5 rounded-md">
-						<svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a8 8 0 100 16 8 8 0 000-16zm0 4a1 1 0 011 1v3a1 1 0 11-2 0V7a1 1 0 011-1zm0 8a1 1 0 100-2 1 1 0 000 2z" /></svg>
-						Próxima sesión analítica: macro + screening
+					<div class="text-[var(--color-text-secondary)] font-medium">
+						{strategyId === 'trader' ? 'Estrategia Trader en fase de acumulación' : strategyId === 'funds' ? 'Pendiente de primer aporte DCA' : 'Cartera recién inicializada'}
 					</div>
+					<p class="text-[var(--color-text-muted)] text-sm mt-2">
+						{strategyId === 'trader' ? '100 €/mes hasta acumular capital operable · Próximo: 3 ago' : strategyId === 'funds' ? '100 €/mes DCA · Próximo aporte: 2 ago' : '10.000 € en liquidez · Pendiente de primera compra'}
+					</p>
 				</div>
 			{:else}
-				<!-- Positions: desktop table, mobile cards -->
 				<div class="border border-[var(--color-border)] rounded-lg overflow-hidden bg-[var(--color-surface)]">
 					<div class="px-4 py-3 border-b border-[var(--color-border)] flex items-center justify-between">
 						<h2 class="text-sm font-semibold text-[var(--color-text-primary)]">Posiciones abiertas</h2>
@@ -136,12 +139,16 @@
 								<th class="px-4 py-2 text-left">Empresa</th>
 								<th class="px-4 py-2 text-right">Acciones</th>
 								<th class="px-4 py-2 text-right">P. medio</th>
-								<th class="px-4 py-2 text-right">Invertido</th>
-								<th class="px-4 py-2 text-right">Peso</th>
+								{#if data.marketValue?.positions?.length}
+									<th class="px-4 py-2 text-right">P. actual</th>
+									<th class="px-4 py-2 text-right">P&L</th>
+								{/if}
+								<th class="px-4 py-2 text-right">Valor</th>
 							</tr>
 						</thead>
 						<tbody class="divide-y divide-[var(--color-border)]">
-							{#each p.positions as pos}
+							{#each p.positions as pos, i}
+								{@const live = data.marketValue?.positions?.find((mp) => mp.ticker === pos.ticker)}
 								<tr class="hover:bg-[var(--color-surface-hover)]">
 									<td class="px-4 py-3">
 										<div class="font-medium text-[var(--color-text-primary)]">{pos.company_name}</div>
@@ -149,8 +156,19 @@
 									</td>
 									<td class="px-4 py-3 text-right tabular text-[var(--color-text-secondary)]">{pos.shares}</td>
 									<td class="px-4 py-3 text-right tabular text-[var(--color-text-secondary)]">{fmtEur(pos.avg_price_eur)}</td>
-									<td class="px-4 py-3 text-right tabular font-medium text-[var(--color-text-primary)]">{fmtEur(pos.shares * pos.avg_price_eur)}</td>
-									<td class="px-4 py-3 text-right tabular text-[var(--color-text-secondary)]">{fmtPct(totalCapital > 0 ? (pos.shares * pos.avg_price_eur) / totalCapital : 0)}</td>
+									{#if data.marketValue?.positions?.length}
+										<td class="px-4 py-3 text-right tabular text-[var(--color-text-secondary)]">{live ? fmtEur(live.current_price_eur) : '—'}</td>
+										<td class="px-4 py-3 text-right tabular {live && live.current_price_eur >= pos.avg_price_eur ? 'text-[var(--color-up)]' : 'text-[var(--color-down)]'}">
+											{#if live}
+												{fmtPct((live.current_price_eur - pos.avg_price_eur) / pos.avg_price_eur)}
+											{:else}
+												—
+											{/if}
+										</td>
+									{/if}
+									<td class="px-4 py-3 text-right tabular font-medium text-[var(--color-text-primary)]">
+										{live ? fmtEur(live.market_value_eur) : fmtEur(pos.shares * pos.avg_price_eur)}
+									</td>
 								</tr>
 							{/each}
 						</tbody>
@@ -159,6 +177,7 @@
 					<!-- Mobile cards -->
 					<div class="sm:hidden divide-y divide-[var(--color-border)]">
 						{#each p.positions as pos}
+							{@const live = data.marketValue?.positions?.find((mp) => mp.ticker === pos.ticker)}
 							<div class="p-3">
 								<div class="flex items-start justify-between gap-2">
 									<div class="min-w-0 flex-1">
@@ -166,46 +185,43 @@
 										<div class="text-[10px] text-[var(--color-text-muted)] font-mono truncate">{pos.ticker} · {pos.sector}</div>
 									</div>
 									<div class="text-right shrink-0">
-										<div class="font-medium tabular text-[var(--color-text-primary)]">{fmtEurShort(pos.shares * pos.avg_price_eur)}</div>
-										<div class="text-[10px] tabular text-[var(--color-text-muted)]">{fmtPct(totalCapital > 0 ? (pos.shares * pos.avg_price_eur) / totalCapital : 0)}</div>
+										<div class="font-medium tabular text-[var(--color-text-primary)]">{live ? fmtEurShort(live.market_value_eur) : fmtEurShort(pos.shares * pos.avg_price_eur)}</div>
+										{#if live}
+											<div class="text-[10px] tabular {live.current_price_eur >= pos.avg_price_eur ? 'text-[var(--color-up)]' : 'text-[var(--color-down)]'}">
+												{fmtPct((live.current_price_eur - pos.avg_price_eur) / pos.avg_price_eur)}
+											</div>
+										{/if}
 									</div>
-								</div>
-								<div class="mt-2 grid grid-cols-3 gap-2 text-[10px] text-[var(--color-text-muted)]">
-									<div><span class="block uppercase tracking-wider">Acciones</span><span class="tabular text-[var(--color-text-secondary)]">{pos.shares}</span></div>
-									<div><span class="block uppercase tracking-wider">P. medio</span><span class="tabular text-[var(--color-text-secondary)]">{fmtEur(pos.avg_price_eur)}</span></div>
-									<div><span class="block uppercase tracking-wider">Sector</span><span class="text-[var(--color-text-secondary)] truncate">{pos.sector}</span></div>
 								</div>
 							</div>
 						{/each}
 					</div>
 				</div>
 			{/if}
+		</div>
+
+		<!-- Right column: market + sectors -->
+		<div class="space-y-4">
+			<MarketPanel items={marketItems} />
 
 			<!-- Sector heatmap -->
-			<div class="border border-[var(--color-border)] rounded-lg bg-[var(--color-surface)] p-3 md:p-4">
-				<div class="flex items-center justify-between mb-3">
-					<h2 class="text-sm font-semibold text-[var(--color-text-primary)]">Sectores S&P (hoy)</h2>
-					<span class="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">Rotación sectorial</span>
+			<div class="border border-[var(--color-border)] rounded-lg bg-[var(--color-surface)] p-3">
+				<div class="flex items-center justify-between mb-2">
+					<h2 class="text-xs font-semibold text-[var(--color-text-primary)]">Sectores S&P</h2>
+					<span class="text-[9px] uppercase tracking-wider text-[var(--color-text-muted)]">Hoy</span>
 				</div>
-				<div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-1.5">
+				<div class="grid grid-cols-3 gap-1">
 					{#each sectors as s}
 						<div
-							class="p-2 md:p-2.5 rounded text-center border"
+							class="p-1.5 rounded text-center border"
 							style="background-color: {s.change_pct >= 0 ? `rgba(16, 185, 129, ${Math.min(0.5, 0.15 + Math.abs(s.change_pct) * 8)})` : `rgba(239, 68, 68, ${Math.min(0.5, 0.15 + Math.abs(s.change_pct) * 8)})`}; border-color: {s.change_pct >= 0 ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'}"
 						>
-							<div class="text-[10px] text-white/80 truncate">{s.name}</div>
-							<div class="text-xs md:text-sm font-semibold tabular text-white">{(s.change_pct * 100).toFixed(2)}%</div>
+							<div class="text-[8px] text-white/80 truncate">{s.name}</div>
+							<div class="text-[10px] font-semibold tabular text-white">{(s.change_pct * 100).toFixed(1)}%</div>
 						</div>
 					{/each}
 				</div>
 			</div>
-		</div>
-
-		<!-- Right: live market -->
-		<div class="space-y-4">
-			<MarketTicker items={indices} maxItems={10} />
-			<MarketTicker items={commodities} maxItems={6} />
-			<MarketTicker items={rates} maxItems={5} />
 		</div>
 	</div>
 
@@ -213,10 +229,9 @@
 	{#if p.trades.length > 0}
 		<div class="border border-[var(--color-border)] rounded-lg overflow-hidden bg-[var(--color-surface)]">
 			<div class="px-4 py-3 border-b border-[var(--color-border)]">
-				<h2 class="text-sm font-semibold text-[var(--color-text-primary)]">Operaciones recientes</h2>
+				<h2 class="text-sm font-semibold text-[var(--color-text-primary)]">Operaciones recientes · {p.strategy?.name}</h2>
 			</div>
 
-			<!-- Desktop table -->
 			<table class="hidden sm:table w-full text-sm">
 				<thead>
 					<tr class="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] border-b border-[var(--color-border)]">
@@ -229,7 +244,7 @@
 					</tr>
 				</thead>
 				<tbody class="divide-y divide-[var(--color-border)]">
-					{#each p.trades.slice(0, 8) as t}
+					{#each p.trades.slice(0, 10) as t}
 						<tr>
 							<td class="px-4 py-2 text-[var(--color-text-muted)]">{fmtDate(t.executed_at)}</td>
 							<td class="px-4 py-2 font-mono text-[var(--color-text-primary)]">{t.ticker}</td>
@@ -246,9 +261,8 @@
 				</tbody>
 			</table>
 
-			<!-- Mobile cards -->
 			<div class="sm:hidden divide-y divide-[var(--color-border)]">
-				{#each p.trades.slice(0, 8) as t}
+				{#each p.trades.slice(0, 10) as t}
 					<div class="p-3 flex items-center gap-3">
 						<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0 {t.side === 'buy' ? 'bg-[var(--color-up)]/20 text-[var(--color-up)]' : 'bg-[var(--color-down)]/20 text-[var(--color-down)]'}">
 							{t.side === 'buy' ? 'BUY' : 'SELL'}

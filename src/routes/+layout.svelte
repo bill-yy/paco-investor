@@ -102,21 +102,21 @@
 			</div>
 
 			<nav class="flex-1 p-3 space-y-0.5 overflow-y-auto">
-			{#each nav as item}
-				<a
-					href={item.href}
-					onclick={closeNav}
-					class="flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors {page.url.pathname === item.href
-						? 'bg-[var(--color-surface-hover)] text-[var(--color-accent)] border-l-2 border-[var(--color-accent)]'
-						: 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]'}"
-				>
-					<svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
-						<path stroke-linecap="round" stroke-linejoin="round" d={item.icon} />
-					</svg>
-					{item.label}
-				</a>
-			{/each}
-		</nav>
+				{#each nav as item}
+					<a
+						href="{item.href}{item.href === '/' ? '' : ''}?strategy={currentStrategyId}"
+						onclick={closeNav}
+						class="flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors {page.url.pathname === item.href
+							? 'bg-[var(--color-surface-hover)] text-[var(--color-accent)] border-l-2 border-[var(--color-accent)]'
+							: 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]'}"
+					>
+						<svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+							<path stroke-linecap="round" stroke-linejoin="round" d={item.icon} />
+						</svg>
+						{item.label}
+					</a>
+				{/each}
+			</nav>
 
 		<div class="p-3 border-t border-[var(--color-border)]">
 			<div class="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider mb-1">Benchmark</div>

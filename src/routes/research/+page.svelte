@@ -1,9 +1,13 @@
 <script lang="ts">
+	import { page } from '$app/state';
+
 	// Research: búsqueda y análisis de empresas
 	let ticker = $state('');
 	let loading = $state(false);
 	let result: any = $state(null);
 	let error: string = $state('');
+
+	const strategyId = $derived(page.url.searchParams.get('strategy') || 'value');
 
 	async function search() {
 		if (!ticker.trim()) return;
@@ -34,27 +38,35 @@
 		return new Intl.NumberFormat('es-ES', { style: 'percent', maximumFractionDigits: 2 }).format(n);
 	};
 
-	const fmtBig = (n: number) => {
-		if (n === undefined || n === null || isNaN(n)) return '—';
-		if (n >= 1e12) return (n / 1e12).toFixed(2) + 'T';
-		if (n >= 1e9) return (n / 1e9).toFixed(2) + 'B';
-		if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
-		return n.toFixed(0);
-	};
-
 	function onKey(e: KeyboardEvent) {
 		if (e.key === 'Enter') search();
 	}
 
-	// Quick suggestions
-	const suggestions = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'NVDA', 'JPM', 'V', 'JNJ', 'BRK-B', 'SAN.MC', 'ITX.MC', 'BBVA.MC', 'NESN.SW', 'OR.PA', 'SAP.DE', 'ASML.AS', 'MC.PA', '7203.T', '7267.T'];
+	// Strategy-specific quick suggestions
+	const suggestionsByStrategy: Record<string, string[]> = {
+		value: ['SAP.DE', 'MC.PA', 'MUV2.DE', 'CAP.PA', 'OR.PA', 'ALV.DE', 'SIE.DE', 'BBVA.MC', 'ITX.MC', 'SAN.MC'],
+		trader: ['BTC-EUR', 'ETH-EUR', 'SOL-EUR', 'SAP.DE', 'SIE.DE', 'ALV.DE', 'BMW.DE', 'IFX.DE', 'BBVA.MC', 'ITX.MC'],
+		funds: ['EUNL.DE', 'VFEA.DE', 'DBXN.DE', '8PSG.DE', 'IEAC.AS']
+	};
+	const suggestions = $derived(suggestionsByStrategy[strategyId] || suggestionsByStrategy.value);
+
+	const title = $derived(
+		strategyId === 'value' ? 'Fundamentales'
+		: strategyId === 'trader' ? 'Análisis técnico'
+		: 'ETFs'
+	);
+	const subtitle = $derived(
+		strategyId === 'value' ? 'Consulta de fundamentales (PER, ROE, EV/EBITDA) vía Yahoo Finance.'
+		: strategyId === 'trader' ? 'Consulta de precio. Para señales técnicas completas, el cron hace el análisis de los 10 indicadores.'
+		: 'Consulta de ETFs UCITS del portfolio pasivo.'
+	);
 </script>
 
 <div class="p-4 md:p-6 space-y-5 md:space-y-6">
 	<header>
 		<div class="text-[11px] uppercase tracking-widest text-[var(--color-text-muted)] font-medium">Análisis</div>
-		<h1 class="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)] mt-1">Research</h1>
-		<p class="text-[var(--color-text-muted)] text-sm mt-1">Consulta de empresas y fundamentales vía Yahoo Finance.</p>
+		<h1 class="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)] mt-1">{title}</h1>
+		<p class="text-[var(--color-text-muted)] text-sm mt-1">{subtitle}</p>
 	</header>
 
 	<div class="flex gap-2">
