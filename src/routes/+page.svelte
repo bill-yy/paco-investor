@@ -90,7 +90,7 @@
 	<div class="grid grid-cols-1 lg:grid-cols-3 gap-5 md:gap-6">
 		<!-- Left: equity curves (2/3 width) -->
 		<div class="lg:col-span-2 space-y-5 md:space-y-6">
-			{#if (data.strategies?.length ?? 0) > 1 && (data.allValuations ?? Object.keys(data.allValuations ?? {}).length) > 0}
+			{#if (data.strategies?.length ?? 0) > 1 && Object.keys(data.allValuations ?? {}).length > 0}
 				<div class="border border-[var(--color-border)] rounded-lg bg-[var(--color-surface)] p-3 md:p-4">
 					<div class="flex items-center justify-between mb-3">
 						<h2 class="text-sm font-semibold text-[var(--color-text-primary)]">Comparativa de estrategias</h2>
@@ -148,7 +148,7 @@
 						</thead>
 						<tbody class="divide-y divide-[var(--color-border)]">
 							{#each p.positions as pos, i}
-								{@const live = data.marketValue?.positions?.find((mp) => mp.ticker === pos.ticker)}
+								{@const live = data.marketValue?.positions?.find((mp: any) => mp.ticker === pos.ticker)}
 								<tr class="hover:bg-[var(--color-surface-hover)]">
 									<td class="px-4 py-3">
 										<div class="font-medium text-[var(--color-text-primary)]">{pos.company_name}</div>
@@ -177,7 +177,7 @@
 					<!-- Mobile cards -->
 					<div class="sm:hidden divide-y divide-[var(--color-border)]">
 						{#each p.positions as pos}
-							{@const live = data.marketValue?.positions?.find((mp) => mp.ticker === pos.ticker)}
+							{@const live = data.marketValue?.positions?.find((mp: any) => mp.ticker === pos.ticker)}
 							<div class="p-3">
 								<div class="flex items-start justify-between gap-2">
 									<div class="min-w-0 flex-1">

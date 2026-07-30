@@ -1,9 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 
-	let { data } = $props();
-	let comparison = $derived(data?.comparison ?? []);
-	let allValuations = $derived(data?.allValuations ?? {});
+	let { comparison = [], allValuations = {} }: { comparison?: any[]; allValuations?: Record<string, any[]> } = $props();
 
 	const fmtEur = (n: number) =>
 		new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n || 0);

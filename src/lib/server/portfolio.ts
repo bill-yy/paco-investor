@@ -254,7 +254,6 @@ export function getAllSnapshots() {
 		const snap = getPortfolioSnapshot(id);
 		return {
 			strategy_id: id,
-			strategy: snap.strategy,
 			...snap
 		};
 	});
