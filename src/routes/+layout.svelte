@@ -5,6 +5,15 @@
 	let { children } = $props();
 	let mobileNavOpen = $state(false);
 
+	const strategies = [
+		{ id: 'value', name: 'Paco Value', icon: 'V', color: '#3b82f6', subtitle: 'Value · 3-7y' },
+		{ id: 'trader', name: 'Paco Trader', icon: 'T', color: '#f59e0b', subtitle: 'Swing · 5-30d' },
+		{ id: 'funds', name: 'Paco Funds', icon: 'F', color: '#10b981', subtitle: 'ETFs · pasivo' }
+	];
+
+	const currentStrategyId = $derived(page.url.searchParams.get('strategy') || 'value');
+	const currentStrategy = $derived(strategies.find((s) => s.id === currentStrategyId) || strategies[0]);
+
 	const nav = [
 		{ href: '/', label: 'Dashboard', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
 		{ href: '/positions', label: 'Posiciones', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
@@ -58,18 +67,41 @@
 		class="fixed top-0 left-0 md:sticky md:top-0 z-50 md:z-0 w-64 md:w-56 h-screen shrink-0 border-r border-[var(--color-border)] bg-[var(--color-bg-elevated)] flex flex-col transition-transform duration-200 sidebar-mobile {mobileNavOpen ? 'sidebar-open' : ''}"
 	>
 		<div class="p-5 border-b border-[var(--color-border)]">
-			<div class="flex items-center gap-2.5">
-				<div class="w-8 h-8 rounded-md bg-gradient-to-br from-[var(--color-accent)] to-[var(--color-up)] flex items-center justify-center">
-					<span class="text-white font-bold text-sm">P</span>
-				</div>
-				<div>
-					<div class="text-sm font-semibold text-[var(--color-text-primary)]">PacoInvestor</div>
-					<div class="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">Value · 3-7y</div>
+				<div class="flex items-center gap-2.5">
+					<div
+						class="w-8 h-8 rounded-md flex items-center justify-center"
+						style="background: linear-gradient(135deg, {currentStrategy.color}, {currentStrategy.color}dd)"
+					>
+						<span class="text-white font-bold text-sm">{currentStrategy.icon}</span>
+					</div>
+					<div>
+						<div class="text-sm font-semibold text-[var(--color-text-primary)]">{currentStrategy.name}</div>
+						<div class="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">{currentStrategy.subtitle}</div>
+					</div>
 				</div>
 			</div>
-		</div>
 
-		<nav class="flex-1 p-3 space-y-0.5 overflow-y-auto">
+			<!-- Strategy switcher -->
+			<div class="px-3 pt-3 pb-2 border-b border-[var(--color-border)]">
+				<div class="text-[9px] uppercase tracking-widest text-[var(--color-text-muted)] mb-1.5 px-1">Estrategia</div>
+				<div class="flex gap-1">
+					{#each strategies as s}
+						<a
+							href="/?strategy={s.id}"
+							onclick={closeNav}
+							class="flex-1 flex flex-col items-center gap-0.5 py-1.5 rounded text-[10px] font-medium transition-colors {currentStrategyId === s.id
+								? 'bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]'
+								: 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-secondary)]'}"
+							style={currentStrategyId === s.id ? `border-bottom: 2px solid ${s.color}` : ''}
+						>
+							<span class="w-5 h-5 rounded flex items-center justify-center text-white text-[9px] font-bold" style="background: {s.color}">{s.icon}</span>
+							<span>{s.name.replace('Paco ', '')}</span>
+						</a>
+					{/each}
+				</div>
+			</div>
+
+			<nav class="flex-1 p-3 space-y-0.5 overflow-y-auto">
 			{#each nav as item}
 				<a
 					href={item.href}
