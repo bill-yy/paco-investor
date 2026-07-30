@@ -59,7 +59,8 @@ export const load: PageServerLoad = async ({ url }) => {
 
 	try {
 		valuations = getValuations(strategyId, 365);
-		const baseline = portfolio?.strategy?.initial_capital_eur || 10000;
+		// baseline = total capital put in (initial + contributions), not just initial
+		const baseline = portfolio?.capital_invested ?? portfolio?.strategy?.initial_capital_eur ?? 10000;
 		stats = getValuationStats(valuations, baseline);
 	} catch (e) {
 		console.error('Valuations failed:', e);
