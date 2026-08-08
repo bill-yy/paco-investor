@@ -104,20 +104,19 @@ export async function computeMarketValue(strategyId = 'value'): Promise<MarketVa
 export async function saveValuation(strategyId = 'value'): Promise<Valuation> {
 	const db = getDb();
 	const mv = await computeMarketValue(strategyId);
-	const timestamp = new Date().toISOString().slice(0, 10);
+	// Full ISO timestamp (not date-only) so intraday snapshots from the
+	// app's internal cron don't overwrite each other. Daily Hermes crons
+	// still work — they just insert one row per day with a full timestamp.
+	const timestamp = new Date().toISOString();
 	const sid = strategyId;
 
-	// Use INSERT OR REPLACE — works regardless of whether the UNIQUE constraint
-	// is on (timestamp) or (timestamp, strategy_id). Safer than ON CONFLICT.
+	// With full ISO timestamps (including ms), each snapshot is unique.
+	// No need for INSERT OR REPLACE — just insert a new row every time.
 	db.prepare(
-		`INSERT OR REPLACE INTO valuations
-		 (id, timestamp, cash_eur, positions_eur, positions_market_eur, total_eur, invested_eur, benchmark_value, benchmark_eur, strategy_id)
-		 VALUES (
-			COALESCE((SELECT id FROM valuations WHERE timestamp = ? AND strategy_id = ?), NULL),
-			?, ?, ?, ?, ?, ?, ?, ?, ?
-		 )`
+		`INSERT INTO valuations
+		 (timestamp, cash_eur, positions_eur, positions_market_eur, total_eur, invested_eur, benchmark_value, benchmark_eur, strategy_id)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	).run(
-		timestamp, sid,
 		timestamp,
 		mv.cash_eur,
 		mv.invested_eur,
@@ -140,7 +139,7 @@ export function getValuations(strategyId = 'value', days = 365): Valuation[] {
 	return db
 		.prepare(
 			`SELECT * FROM valuations
-			 WHERE strategy_id = ? AND timestamp >= date('now', ?)
+			 WHERE strategy_id = ? AND timestamp >= datetime('now', ?)
 			 ORDER BY timestamp ASC`
 		)
 		.all(strategyId, `-${days} days`) as Valuation[];
@@ -154,7 +153,7 @@ export function getValuationsByStrategy(days = 365): Record<string, Valuation[]>
 		result[sid] = db
 			.prepare(
 				`SELECT * FROM valuations
-				 WHERE strategy_id = ? AND timestamp >= date('now', ?)
+				 WHERE strategy_id = ? AND timestamp >= datetime('now', ?)
 				 ORDER BY timestamp ASC`
 			)
 			.all(sid, `-${days} days`) as Valuation[];

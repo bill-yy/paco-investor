@@ -25,11 +25,19 @@
 			for (const v of allValuations[sid] || []) dates.add(v.timestamp);
 		}
 		return Array.from(dates).sort();
-	});
+		});
+
+		function fmtTimestamp(s: string): string {
+		const d = new Date(s);
+		if (s.includes('T')) {
+			return d.toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+		}
+		return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+		}
 
 	function buildChart(): Chart {
 		if (!canvas) throw new Error('canvas not ready');
-		const labels = allDates;
+		const labels = allDates.map(fmtTimestamp);
 
 		const datasets = (strategies || []).map((s) => {
 			const series = allValuations[s.id] || [];

@@ -16,8 +16,15 @@
 
 	const fmtEur = (n: number) =>
 		new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n || 0);
-	const fmtDate = (s: string) =>
-		new Date(s).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+	const fmtDate = (s: string) => {
+		const d = new Date(s);
+		// If timestamp has time component (new format), show date + time
+		if (s.includes('T')) {
+			return d.toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+		}
+		// Legacy date-only format
+		return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+	};
 
 	let canvas: HTMLCanvasElement | undefined = $state();
 	let chart: Chart | null = null;
