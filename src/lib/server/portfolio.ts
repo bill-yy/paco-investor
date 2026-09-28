@@ -62,7 +62,7 @@ export async function executeTrade(input: TradeInput): Promise<TradeResult> {
 			.get(ticker, strategyId, 'open') as Position | undefined;
 
 		if (input.side === 'buy') {
-			if (existing) {
+			if (existing && existing.shares > 0.0000001) {
 				const newShares = existing.shares + input.shares;
 				const newAvgLocal =
 					(existing.shares * existing.avg_price_local + input.shares * price_local) /
@@ -94,7 +94,44 @@ export async function executeTrade(input: TradeInput): Promise<TradeResult> {
 					existing.id
 				);
 			} else {
-				db.prepare(
+				// Re-buy of a previously closed position (same ticker+strategy):
+				// UNIQUE(ticker, strategy_id) means the closed row still exists,
+				// so we reopen/reactivate it instead of inserting a duplicate.
+				const closed = db
+					.prepare(
+						'SELECT id, shares, avg_price_local, avg_price_eur FROM positions WHERE ticker = ? AND strategy_id = ? ORDER BY id DESC LIMIT 1'
+					)
+					.get(ticker, strategyId) as Position | undefined;
+
+				if (closed) {
+					db.prepare(
+						`UPDATE positions
+						 SET shares = ?, avg_price_local = ?, avg_price_eur = ?, status = 'open',
+						     opened_at = ?,
+						     isin = COALESCE(?, isin),
+						     fair_value_eur = ?, thesis = ?, bear_case = ?, score = ?, catalysts = ?, risks = ?,
+						     stop_loss_eur = ?, take_profit_eur = ?, entry_signal = ?, trade_plan = ?
+						 WHERE id = ?`
+					).run(
+						input.shares,
+						price_local,
+						price_eur,
+						executed_at.slice(0, 10),
+						input.isin ?? null,
+						input.fair_value_eur ?? null,
+						input.thesis ?? null,
+						input.bear_case ?? null,
+						input.score ?? null,
+						input.catalysts ?? null,
+						input.risks ?? null,
+						input.stop_loss_eur ?? null,
+						input.take_profit_eur ?? null,
+						input.entry_signal ?? null,
+						input.trade_plan ?? null,
+						closed.id
+					);
+				} else {
+					db.prepare(
 					`INSERT INTO positions
 					 (ticker, isin, company_name, market, sector, currency, shares, avg_price_local, avg_price_eur,
 					  opened_at, fair_value_eur, thesis, bear_case, score, catalysts, risks, status, strategy_id,
@@ -123,6 +160,7 @@ export async function executeTrade(input: TradeInput): Promise<TradeResult> {
 					input.entry_signal ?? null,
 					input.trade_plan ?? null
 				);
+				}
 			}
 		} else {
 			// SELL
